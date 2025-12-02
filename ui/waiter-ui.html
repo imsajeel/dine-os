@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Waiter App</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* Hide Scrollbar */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animations */
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+
+        /* Mobile safe area padding */
+        .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen overflow-hidden flex flex-col">
+
+    <!-- TOP BAR -->
+    <header class="bg-white shadow-sm z-20 px-4 py-3 flex justify-between items-center shrink-0 h-16">
+        <div id="header-left" class="flex items-center gap-2">
+            <!-- Dynamic Content -->
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
+            <h1 class="font-bold text-lg">Floor Plan</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <button class="relative p-2 text-slate-500 hover:bg-slate-50 rounded-full">
+                <i class="ph-bold ph-bell text-xl"></i>
+                <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+            </button>
+            <div class="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80" alt="User" class="w-full h-full object-cover">
+            </div>
+        </div>
+    </header>
+
+    <!-- VIEWS CONTAINER -->
+    <main id="app-container" class="flex-1 relative overflow-hidden">
+        
+        <!-- VIEW 1: TABLE MAP -->
+        <div id="view-tables" class="absolute inset-0 overflow-y-auto p-4 pb-20 transition-transform duration-300">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <!-- Tables injected by JS -->
+            </div>
+        </div>
+
+        <!-- VIEW 2: MENU & ORDERING -->
+        <div id="view-menu" class="absolute inset-0 bg-slate-100 translate-x-full transition-transform duration-300 flex flex-col">
+            <!-- Menu Header -->
+            <div class="bg-white px-4 py-3 border-b border-slate-200 flex items-center gap-3 shrink-0">
+                <button onclick="showTables()" class="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-full">
+                    <i class="ph-bold ph-arrow-left text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="font-bold text-lg leading-tight" id="selected-table-name">Table 1</h2>
+                    <p class="text-xs text-slate-400" id="selected-table-status">Taking Order</p>
+                </div>
+            </div>
+
+            <!-- Categories (Horizontal Scroll) -->
+            <div class="bg-white border-b border-slate-200 py-3 shrink-0">
+                <div id="category-scroll" class="flex gap-3 px-4 overflow-x-auto scrollbar-hide">
+                    <!-- Categories injected by JS -->
+                </div>
+            </div>
+
+            <!-- Menu Items List -->
+            <div id="menu-list" class="flex-1 overflow-y-auto p-4 pb-32 space-y-4">
+                <!-- Items injected by JS -->
+            </div>
+
+            <!-- Floating Bottom Bar (Cart Summary) -->
+            <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-100 via-slate-100 to-transparent safe-pb">
+                <button onclick="toggleCart()" id="cart-fab" class="w-full bg-slate-800 text-white rounded-2xl shadow-lg shadow-slate-300 p-4 flex items-center justify-between transform transition-transform active:scale-95 hidden">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-slate-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm" id="cart-count">0</div>
+                        <span class="font-medium">View Order</span>
+                    </div>
+                    <span class="font-bold text-lg" id="cart-total">$0.00</span>
+                </button>
+            </div>
+        </div>
+        
+    </main>
+
+    <!-- CART MODAL (Slide Up) -->
+    <div id="cart-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity opacity-0">
+        <div onclick="toggleCart()" class="flex-1"></div> <!-- Backdrop click to close -->
+        <div class="bg-white rounded-t-3xl shadow-2xl h-[80vh] flex flex-col transform translate-y-full transition-transform duration-300" id="cart-sheet">
+            
+            <!-- Handle -->
+            <div class="w-full flex justify-center pt-3 pb-1" onclick="toggleCart()">
+                <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
+            </div>
+
+            <!-- Cart Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h2 class="text-xl font-bold">Current Order</h2>
+                <button onclick="clearCart()" class="text-red-500 text-sm font-medium">Clear All</button>
+            </div>
+
+            <!-- Cart Items -->
+            <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- Cart items injected -->
+            </div>
+
+            <!-- Actions -->
+            <div class="p-6 border-t border-slate-100 bg-slate-50 safe-pb">
+                <div class="flex justify-between mb-4 text-slate-600">
+                    <span>Total</span>
+                    <span class="font-bold text-slate-800 text-xl" id="modal-total-display">$0.00</span>
+                </div>
+                <button onclick="submitOrder()" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-200 active:scale-95 transition-transform flex justify-center items-center gap-2">
+                    <span>Send to Kitchen</span>
+                    <i class="ph-bold ph-paper-plane-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-xl transform -translate-y-20 transition-transform duration-300 z-50 flex items-center gap-2">
+        <i class="ph-fill ph-check-circle text-green-400 text-xl"></i>
+        <span id="toast-msg">Order Sent!</span>
+    </div>
+
+    <script>
+        // --- DATA ---
+        const TABLES = [
+            { id: 1, name: "Table 1", status: "free", guests: 0, order: [] },
+            { id: 2, name: "Table 2", status: "occupied", guests: 2, order: [] },
+            { id: 3, name: "Table 3", status: "bill", guests: 3, order: [] },
+            { id: 4, name: "Table 4", status: "free", guests: 0, order: [] },
+            { id: 5, name: "Table 5", status: "occupied", guests: 4, order: [] },
+            { id: 6, name: "Booth 1", status: "free", guests: 0, order: [] },
+            { id: 7, name: "Booth 2", status: "free", guests: 0, order: [] },
+            { id: 8, name: "Bar 1", status: "free", guests: 0, order: [] },
+        ];
+
+        const CATEGORIES = [
+            { id: 'starters', name: 'Starters' },
+            { id: 'mains', name: 'Mains' },
+            { id: 'drinks', name: 'Drinks' },
+            { id: 'desserts', name: 'Desserts' },
+            { id: 'sides', name: 'Sides' },
+        ];
+
+        const MENU = [
+            { id: 101, category: 'starters', name: 'Garlic Bread', price: 6.50, desc: 'Toasted with herb butter' },
+            { id: 102, category: 'starters', name: 'Calamari', price: 9.00, desc: 'Crispy fried squid rings' },
+            { id: 103, category: 'mains', name: 'Steak Frites', price: 24.00, desc: 'Ribeye with shoestring fries' },
+            { id: 104, category: 'mains', name: 'Grilled Salmon', price: 22.00, desc: 'With asparagus and lemon' },
+            { id: 105, category: 'mains', name: 'Cheeseburger', price: 16.50, desc: 'Double patty, house sauce' },
+            { id: 106, category: 'drinks', name: 'Coke', price: 3.50, desc: '330ml glass bottle' },
+            { id: 107, category: 'drinks', name: 'House Wine (Red)', price: 8.00, desc: 'Glass 175ml' },
+            { id: 108, category: 'desserts', name: 'Tiramisu', price: 7.50, desc: 'Classic italian recipe' },
+            { id: 109, category: 'mains', name: 'Pesto Pasta', price: 15.00, desc: 'Fresh basil pesto, pine nuts' },
+        ];
+
+        // --- STATE ---
+        let state = {
+            currentTableId: null,
+            activeCategory: 'starters',
+            currentOrder: {} // Map tableId -> Array of items
+        };
+
+        // --- DOM REFERENCES ---
+        const els = {
+            tablesView: document.getElementById('view-tables'),
+            tablesGrid: document.querySelector('#view-tables > div'),
+            menuView: document.getElementById('view-menu'),
+            categoryScroll: document.getElementById('category-scroll'),
+            menuList: document.getElementById('menu-list'),
+            headerTitle: document.querySelector('#header-left h1'),
+            selectedTableName: document.getElementById('selected-table-name'),
+            cartFab: document.getElementById('cart-fab'),
+            cartCount: document.getElementById('cart-count'),
+            cartTotal: document.getElementById('cart-total'),
+            cartModal: document.getElementById('cart-modal'),
+            cartSheet: document.getElementById('cart-sheet'),
+            cartItems: document.getElementById('cart-items'),
+            modalTotalDisplay: document.getElementById('modal-total-display'),
+            toast: document.getElementById('toast'),
+            toastMsg: document.getElementById('toast-msg'),
+        };
+
+        // --- INIT ---
+        function init() {
+            renderTables();
+            renderCategories();
+        }
+
+        // --- RENDERERS ---
+
+        function renderTables() {
+            els.tablesGrid.innerHTML = TABLES.map(table => {
+                let statusColor = 'bg-white border-slate-200 text-slate-800';
+                let statusIcon = 'ph-armchair';
+                let statusText = 'Free';
+
+                if (table.status === 'occupied') {
+                    statusColor = 'bg-blue-50 border-blue-200 text-blue-700';
+                    statusIcon = 'ph-users-three';
+                    statusText = 'Occupied';
+                } else if (table.status === 'bill') {
+                    statusColor = 'bg-amber-50 border-amber-200 text-amber-700';
+                    statusIcon = 'ph-receipt';
+                    statusText = 'Bill Requested';
+                }
+
+                return `
+                <button onclick="openTable(${table.id})" class="flex flex-col p-4 rounded-2xl border-2 ${statusColor} shadow-sm active:scale-95 transition-all relative overflow-hidden h-32 justify-between">
+                    <div class="flex justify-between items-start w-full">
+                        <span class="font-bold text-lg">${table.name}</span>
+                        <i class="ph-fill ${statusIcon} text-xl opacity-50"></i>
+                    </div>
+                    <div class="flex justify-between items-end w-full">
+                        <span class="text-xs font-semibold uppercase tracking-wider opacity-75">${statusText}</span>
+                        ${table.status !== 'free' ? `<span class="bg-white/50 px-2 py-1 rounded-md text-xs font-bold">${state.currentOrder[table.id] ? state.currentOrder[table.id].length : 0} items</span>` : ''}
+                    </div>
+                </button>
+                `;
+            }).join('');
+        }
+
+        function renderCategories() {
+            els.categoryScroll.innerHTML = CATEGORIES.map(cat => `
+                <button 
+                    onclick="setCategory('${cat.id}')"
+                    class="px-5 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-colors ${state.activeCategory === cat.id ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'}"
+                >
+                    ${cat.name}
+                </button>
+            `).join('');
+        }
+
+        function renderMenu(categoryId) {
+            const items = MENU.filter(m => m.category === categoryId);
+            
+            els.menuList.innerHTML = items.map(item => {
+                // Get qty for this item in current table's order
+                const order = state.currentOrder[state.currentTableId] || [];
+                const inCart = order.find(i => i.id === item.id);
+                const qty = inCart ? inCart.quantity : 0;
+
+                return `
+                <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between gap-4">
+                    <div class="flex-1">
+                        <h3 class="font-bold text-slate-800">${item.name}</h3>
+                        <p class="text-xs text-slate-500 mb-1">${item.desc}</p>
+                        <p class="font-semibold text-blue-600">$${item.price.toFixed(2)}</p>
+                    </div>
+                    
+                    ${qty > 0 ? `
+                    <div class="flex items-center gap-3 bg-slate-100 rounded-xl p-1">
+                        <button onclick="updateItem(${item.id}, -1)" class="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm text-slate-600 active:scale-90 transition-transform"><i class="ph-bold ph-minus"></i></button>
+                        <span class="font-bold w-4 text-center text-sm">${qty}</span>
+                        <button onclick="updateItem(${item.id}, 1)" class="w-8 h-8 flex items-center justify-center bg-blue-600 rounded-lg shadow-sm text-white active:scale-90 transition-transform"><i class="ph-bold ph-plus"></i></button>
+                    </div>
+                    ` : `
+                    <button onclick="updateItem(${item.id}, 1)" class="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-800 rounded-xl hover:bg-slate-200 active:scale-90 transition-transform">
+                        <i class="ph-bold ph-plus text-lg"></i>
+                    </button>
+                    `}
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderCartItems() {
+            const order = state.currentOrder[state.currentTableId] || [];
+            
+            if (order.length === 0) {
+                els.cartItems.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-slate-400 opacity-50">
+                        <i class="ph-duotone ph-shopping-cart text-4xl mb-2"></i>
+                        <p>No items yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            els.cartItems.innerHTML = order.map(item => `
+                <div class="flex items-center justify-between border-b border-slate-50 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-slate-100 rounded-md flex items-center justify-center font-bold text-sm text-slate-600">x${item.quantity}</div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-800">${item.name}</h4>
+                            <p class="text-xs text-slate-400">$${(item.price * item.quantity).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="updateItem(${item.id}, -1)" class="p-2 text-slate-400 hover:bg-slate-50 rounded-lg"><i class="ph-bold ph-minus"></i></button>
+                        <button onclick="updateItem(${item.id}, 1)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><i class="ph-bold ph-plus"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateCartSummary() {
+            const order = state.currentOrder[state.currentTableId] || [];
+            const count = order.reduce((acc, i) => acc + i.quantity, 0);
+            const total = order.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+
+            els.cartCount.textContent = count;
+            els.cartTotal.textContent = `$${total.toFixed(2)}`;
+            els.modalTotalDisplay.textContent = `$${total.toFixed(2)}`;
+
+            if (count > 0) {
+                els.cartFab.classList.remove('hidden');
+                els.cartFab.classList.add('flex');
+                els.cartFab.classList.add('animate-slide-up');
+            } else {
+                els.cartFab.classList.add('hidden');
+                els.cartFab.classList.remove('flex');
+            }
+        }
+
+        // --- ACTIONS ---
+
+        window.openTable = (id) => {
+            state.currentTableId = id;
+            const table = TABLES.find(t => t.id === id);
+            
+            // UI Transition
+            els.tablesView.style.transform = 'translateX(-20%)';
+            els.tablesView.style.opacity = '0';
+            els.menuView.style.transform = 'translateX(0)';
+            
+            // Set Header Info
+            els.headerTitle.textContent = "Ordering";
+            els.selectedTableName.textContent = table.name;
+            els.selectedTableName.dataset.id = id;
+            
+            renderMenu(state.activeCategory);
+            updateCartSummary();
+        };
+
+        window.showTables = () => {
+            // UI Transition
+            els.tablesView.style.transform = 'translateX(0)';
+            els.tablesView.style.opacity = '1';
+            els.menuView.style.transform = 'translateX(100%)';
+            
+            els.headerTitle.textContent = "Floor Plan";
+            state.currentTableId = null;
+            renderTables(); // Refresh status badges
+        };
+
+        window.setCategory = (id) => {
+            state.activeCategory = id;
+            renderCategories(); // Re-render chips to update active state
+            renderMenu(id);
+        };
+
+        window.updateItem = (itemId, delta) => {
+            if (!state.currentTableId) return;
+
+            // Initialize array if undefined
+            if (!state.currentOrder[state.currentTableId]) {
+                state.currentOrder[state.currentTableId] = [];
+            }
+
+            const order = state.currentOrder[state.currentTableId];
+            const itemIndex = order.findIndex(i => i.id === itemId);
+            const menuRef = MENU.find(m => m.id === itemId);
+
+            if (itemIndex > -1) {
+                // Item exists
+                const newQty = order[itemIndex].quantity + delta;
+                if (newQty <= 0) {
+                    order.splice(itemIndex, 1);
+                } else {
+                    order[itemIndex].quantity = newQty;
+                }
+            } else if (delta > 0) {
+                // New item
+                order.push({ ...menuRef, quantity: 1 });
+            }
+
+            renderMenu(state.activeCategory);
+            updateCartSummary();
+            renderCartItems(); // If modal is open
+        };
+
+        window.toggleCart = () => {
+            const modal = els.cartModal;
+            const sheet = els.cartSheet;
+            
+            if (modal.classList.contains('hidden')) {
+                renderCartItems();
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                
+                // Animate In
+                requestAnimationFrame(() => {
+                    modal.classList.remove('opacity-0');
+                    sheet.classList.remove('translate-y-full');
+                });
+            } else {
+                // Animate Out
+                modal.classList.add('opacity-0');
+                sheet.classList.add('translate-y-full');
+                
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 300);
+            }
+        };
+
+        window.clearCart = () => {
+             if (confirm("Clear this order?")) {
+                 state.currentOrder[state.currentTableId] = [];
+                 updateCartSummary();
+                 toggleCart();
+                 renderMenu(state.activeCategory);
+             }
+        };
+
+        window.submitOrder = () => {
+            const tableId = state.currentTableId;
+            const table = TABLES.find(t => t.id === tableId);
+            
+            if (!state.currentOrder[tableId] || state.currentOrder[tableId].length === 0) return;
+
+            // Update Table Status Logic
+            if (table.status === 'free') {
+                table.status = 'occupied';
+            }
+
+            // Show Toast
+            els.toast.classList.remove('-translate-y-20');
+            setTimeout(() => {
+                els.toast.classList.add('-translate-y-20');
+            }, 2000);
+
+            // Close Cart & Return to Map
+            toggleCart();
+            setTimeout(() => {
+                showTables();
+            }, 300);
+        };
+
+        // --- RUN ---
+        init();
+
+    </script>
+</body>
+</html>

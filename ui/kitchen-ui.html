@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Display System (KDS)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Custom Scrollbar for Dark Theme */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Ticket Animations */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .ticket-enter { animation: slideIn 0.3s ease-out forwards; }
+        
+        .ticket-flash { animation: flash 1s infinite; }
+        @keyframes flash {
+            0%, 100% { border-color: #ef4444; }
+            50% { border-color: transparent; }
+        }
+
+        /* Strikethrough Animation */
+        .strike-through {
+            position: relative;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .strike-through::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: currentColor;
+            animation: strike 0.2s ease-out forwards;
+        }
+        @keyframes strike { from { width: 0; } to { width: 100%; } }
+    </style>
+</head>
+<body class="bg-slate-900 text-white h-screen overflow-hidden flex flex-col">
+
+    <!-- Header / Stats Bar -->
+    <header class="h-16 bg-slate-800 border-b border-slate-700 flex items-center justify-between px-6 shrink-0 z-10">
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">K</div>
+                <h1 class="font-bold text-xl tracking-tight">KITCHEN<span class="text-blue-500">VIEW</span></h1>
+            </div>
+            
+            <!-- Filters -->
+            <div class="hidden md:flex bg-slate-900 p-1 rounded-lg border border-slate-700">
+                <button onclick="setFilter('all')" id="filter-all" class="px-4 py-1.5 rounded-md text-sm font-semibold bg-slate-700 text-white shadow-sm transition-all">All Active</button>
+                <button onclick="setFilter('prep')" id="filter-prep" class="px-4 py-1.5 rounded-md text-sm font-semibold text-slate-400 hover:text-white transition-all">Prep</button>
+                <button onclick="setFilter('ready')" id="filter-ready" class="px-4 py-1.5 rounded-md text-sm font-semibold text-slate-400 hover:text-white transition-all">Ready</button>
+            </div>
+        </div>
+
+        <!-- Live Stats -->
+        <div class="flex items-center gap-6 text-sm">
+            <div class="flex flex-col items-end">
+                <span class="text-slate-400 text-xs uppercase tracking-wider font-bold">Avg Ticket Time</span>
+                <span class="font-mono font-bold text-green-400">12:45</span>
+            </div>
+            <div class="w-px h-8 bg-slate-700"></div>
+            <div class="flex flex-col items-end">
+                <span class="text-slate-400 text-xs uppercase tracking-wider font-bold">Orders Pending</span>
+                <span class="font-mono font-bold text-blue-400 text-lg leading-none" id="stats-pending">0</span>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 hover:bg-slate-600 hover:text-white cursor-pointer transition-colors">
+                 <i class="ph-bold ph-clock-counter-clockwise text-xl"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Ticket Grid -->
+    <main class="flex-1 overflow-x-auto overflow-y-hidden p-4">
+        <!-- Horizontal Scroll Container for Tickets -->
+        <div id="ticket-container" class="flex gap-4 h-full">
+            <!-- Tickets Injected via JS -->
+        </div>
+    </main>
+    
+    <!-- Recall Modal (Hidden) -->
+    <div id="recall-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-slate-800 border border-slate-600 rounded-2xl p-6 max-w-2xl w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Recently Completed</h2>
+                <button onclick="toggleHistory()" class="text-slate-400 hover:text-white"><i class="ph-bold ph-x text-2xl"></i></button>
+            </div>
+            <div class="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto" id="history-grid">
+                <!-- History Items -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Mock Data ---
+        const ITEMS = {
+            1: { name: 'DBL Cheeseburger', mods: ['No Onions', 'Extra Cheese'] },
+            2: { name: 'Fries', mods: [] },
+            3: { name: 'Calamari', mods: ['Sauce on side'] },
+            4: { name: 'Caesar Salad', mods: ['Add Chicken'] },
+            5: { name: 'Ribeye Steak', mods: ['Medium Rare', 'Mushrooms'] },
+            6: { name: 'Lobster Bisque', mods: [] },
+            7: { name: 'Tiramisu', mods: [] },
+        };
+
+        let orders = [
+            { 
+                id: 101, 
+                table: 4, 
+                server: 'Alex', 
+                status: 'prep', 
+                startTime: Date.now() - (16 * 60 * 1000), // 16 mins ago (Overdue)
+                items: [
+                    { id: 5, done: false },
+                    { id: 2, done: false },
+                    { id: 4, done: true }
+                ]
+            },
+            { 
+                id: 102, 
+                table: 12, 
+                server: 'Sarah', 
+                status: 'prep', 
+                startTime: Date.now() - (8 * 60 * 1000), // 8 mins ago
+                items: [
+                    { id: 1, done: false },
+                    { id: 1, done: false }, // quantity logic handled by rendering same item twice or quantity count
+                    { id: 2, done: false }
+                ]
+            },
+            { 
+                id: 103, 
+                table: 7, 
+                server: 'Mike', 
+                status: 'new', 
+                startTime: Date.now() - (45 * 1000), // 45 sec ago
+                items: [
+                    { id: 3, done: false },
+                    { id: 6, done: false }
+                ]
+            },
+            { 
+                id: 104, 
+                table: 'Bar 1', 
+                server: 'Jen', 
+                status: 'prep', 
+                startTime: Date.now() - (12 * 60 * 1000), 
+                items: [
+                    { id: 1, done: true },
+                    { id: 2, done: false }
+                ]
+            }
+        ];
+
+        let history = [];
+        let filter = 'all';
+
+        // --- DOM Elements ---
+        const container = document.getElementById('ticket-container');
+        const statsPending = document.getElementById('stats-pending');
+
+        // --- Logic ---
+
+        function init() {
+            renderTickets();
+            setInterval(updateTimers, 1000); // Live timer update
+            updateStats();
+        }
+
+        function renderTickets() {
+            container.innerHTML = '';
+            
+            const activeOrders = orders.filter(o => {
+                if (filter === 'all') return true;
+                return o.status === filter;
+            }).sort((a, b) => a.startTime - b.startTime); // Oldest first
+
+            activeOrders.forEach(order => {
+                const isOverdue = (Date.now() - order.startTime) > (15 * 60 * 1000); // 15 min warning
+                const isNew = (Date.now() - order.startTime) < (60 * 1000); // New animation
+
+                let borderColor = isOverdue ? 'border-red-500 border-2' : 'border-slate-700';
+                let headerColor = isOverdue ? 'bg-red-500/10 text-red-200' : 'bg-slate-800';
+                
+                if (order.status === 'ready') {
+                    borderColor = 'border-green-500 border-2';
+                    headerColor = 'bg-green-500/10 text-green-200';
+                }
+
+                const card = document.createElement('div');
+                card.className = `min-w-[320px] w-[320px] bg-slate-800 rounded-xl flex flex-col shadow-xl overflow-hidden border ${borderColor} ticket-enter h-full max-h-[calc(100vh-140px)] relative`;
+                
+                // Header
+                card.innerHTML = `
+                    <div class="p-4 border-b border-slate-700 ${headerColor} flex justify-between items-start shrink-0">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-2xl font-bold">#${order.table}</span>
+                                <span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">ID:${order.id}</span>
+                            </div>
+                            <div class="text-sm opacity-80 flex items-center gap-1">
+                                <i class="ph-bold ph-user"></i> ${order.server}
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-mono font-bold timer" data-start="${order.startTime}">00:00</div>
+                            <div class="text-xs font-bold uppercase tracking-wide opacity-75">${order.status}</div>
+                        </div>
+                    </div>
+                `;
+
+                // Body (Scrollable)
+                const body = document.createElement('div');
+                body.className = "p-2 flex-1 overflow-y-auto space-y-1";
+                
+                order.items.forEach((itemObj, idx) => {
+                    const itemData = ITEMS[itemObj.id];
+                    const itemRow = document.createElement('div');
+                    itemRow.className = `p-3 rounded-lg hover:bg-slate-700/50 cursor-pointer select-none transition-colors ${itemObj.done ? 'opacity-50' : ''}`;
+                    itemRow.onclick = () => toggleItem(order.id, idx);
+                    
+                    itemRow.innerHTML = `
+                        <div class="flex items-start gap-3 ${itemObj.done ? 'strike-through' : ''}">
+                            <div class="w-6 h-6 rounded border ${itemObj.done ? 'bg-green-500 border-green-500' : 'border-slate-500'} flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                                <i class="ph-bold ph-check text-white ${itemObj.done ? 'opacity-100' : 'opacity-0'}"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-lg leading-tight">${itemData.name}</div>
+                                ${itemData.mods.length > 0 ? `
+                                    <div class="text-red-300 text-sm mt-1 font-medium italic">
+                                        ${itemData.mods.map(m => `• ${m}`).join('<br>')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                    body.appendChild(itemRow);
+                });
+
+                card.appendChild(body);
+
+                // Footer Actions
+                const footer = document.createElement('div');
+                footer.className = "p-4 border-t border-slate-700 bg-slate-800/50 shrink-0 grid grid-cols-2 gap-3";
+                
+                if (order.status === 'ready') {
+                    footer.innerHTML = `
+                        <button onclick="updateStatus(${order.id}, 'prep')" class="col-span-1 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold text-slate-300">Undo</button>
+                        <button onclick="completeOrder(${order.id})" class="col-span-1 py-3 rounded-lg bg-slate-600 hover:bg-slate-500 font-bold text-white">Bump</button>
+                    `;
+                } else {
+                    const allDone = order.items.every(i => i.done);
+                    footer.innerHTML = `
+                        <button class="col-span-1 py-3 rounded-lg bg-slate-700 text-slate-400 font-bold cursor-not-allowed opacity-50">Print</button>
+                        <button onclick="updateStatus(${order.id}, 'ready')" class="col-span-1 py-3 rounded-lg ${allDone ? 'bg-green-600 hover:bg-green-500 text-white animate-pulse' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-bold transition-all">
+                            ${allDone ? 'Ready!' : 'Done'}
+                        </button>
+                    `;
+                }
+
+                card.appendChild(footer);
+                container.appendChild(card);
+            });
+        }
+
+        // --- Interaction Handlers ---
+
+        window.toggleItem = (orderId, itemIdx) => {
+            const order = orders.find(o => o.id === orderId);
+            if (order) {
+                order.items[itemIdx].done = !order.items[itemIdx].done;
+                renderTickets(); // Re-render to update UI state
+            }
+        };
+
+        window.updateStatus = (orderId, newStatus) => {
+            const order = orders.find(o => o.id === orderId);
+            if (order) {
+                // If moving to prep from new, update timestamp? usually no, timer counts total time
+                order.status = newStatus;
+                if(newStatus === 'ready') {
+                    // Could play a sound here
+                }
+                renderTickets();
+                updateStats();
+            }
+        };
+
+        window.completeOrder = (orderId) => {
+            const idx = orders.findIndex(o => o.id === orderId);
+            if (idx > -1) {
+                const completed = orders.splice(idx, 1)[0];
+                completed.endTime = Date.now();
+                history.push(completed);
+                renderTickets();
+                updateStats();
+            }
+        };
+
+        window.setFilter = (f) => {
+            filter = f;
+            // Update buttons
+            ['all', 'prep', 'ready'].forEach(k => {
+                const btn = document.getElementById(`filter-${k}`);
+                if (k === f) {
+                    btn.className = "px-4 py-1.5 rounded-md text-sm font-semibold bg-slate-700 text-white shadow-sm transition-all";
+                } else {
+                    btn.className = "px-4 py-1.5 rounded-md text-sm font-semibold text-slate-400 hover:text-white transition-all";
+                }
+            });
+            renderTickets();
+        };
+
+        // --- Utility ---
+
+        function updateTimers() {
+            document.querySelectorAll('.timer').forEach(el => {
+                const start = parseInt(el.dataset.start);
+                const diff = Date.now() - start;
+                
+                const minutes = Math.floor(diff / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                
+                const str = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                el.textContent = str;
+
+                // Dynamic coloring for timers
+                if (minutes >= 15) el.classList.add('text-red-400');
+                else if (minutes >= 10) el.classList.add('text-amber-400');
+                else el.classList.remove('text-red-400', 'text-amber-400');
+            });
+        }
+
+        function updateStats() {
+            statsPending.textContent = orders.length;
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>

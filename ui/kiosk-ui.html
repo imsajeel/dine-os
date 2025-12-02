@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futuristic POS Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CSS VARIABLES: The Neon Palette --- */
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-purple: #bc13fe;
+            --neon-green: #39ff14;
+            --neon-red: #ff073a;
+            
+            --bg-dark: #0a0a12;
+            --bg-deep: #040408;
+            
+            /* Glassmorphism Backgrounds */
+            --glass-bg: rgba(20, 20, 35, 0.7);
+            --glass-border: rgba(100, 200, 255, 0.2);
+            --glass-blur: blur(20px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif; /* Body text */
+            /* Deep Space Gradient Background */
+            background: radial-gradient(circle at top right, #1a1a2e, var(--bg-deep) 80%);
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+            letter-spacing: 0.5px;
+        }
+
+        h1, h2, h3, .tech-font {
+            font-family: 'Orbitron', sans-serif; /* Headings */
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Utility Class: The Glass Panel */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5) inset;
+        }
+
+        /* --- LAYOUT GRID --- */
+        .app-shell {
+            display: grid;
+            height: 100vh;
+            grid-template-rows: 50px 1fr; /* Header / Content */
+        }
+        
+        /* Content area split */
+        .content-split {
+            display: grid;
+            grid-template-columns: 90px 1fr 380px; /* Nav | Main | Cart */
+            height: 100%;
+            overflow: hidden;
+            gap: 15px;
+            padding: 15px;
+        }
+
+        /* --- SHARED COMPONENTS --- */
+        
+        /* Header Bar */
+        .status-header {
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; font-size: 14px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 5px var(--neon-blue);
+        }
+        .system-online { color: var(--neon-green); text-shadow: 0 0 8px var(--neon-green); }
+
+        /* Navigation Sidebar (Floating Glass) */
+        .nav-sidebar {
+            border-radius: 16px;
+            display: flex; flex-direction: column; align-items: center;
+            padding-top: 30px;
+        }
+        .nav-item {
+            width: 60px; height: 60px;
+            margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; color: rgba(255,255,255,0.5);
+            border-radius: 12px; transition: 0.3s;
+            border: 1px solid transparent;
+        }
+        .nav-item.active {
+            color: var(--neon-blue);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue) inset;
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* MAIN VIEW CONTAINER */
+        .main-view-container {
+            border-radius: 16px;
+            padding: 25px;
+            overflow-y: auto;
+        }
+        /* Custom Scrollbar for the futuristic look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 4px; }
+
+
+        /* --- MODE A: DINE-IN (Cyber-Tables) --- */
+        .floor-plan-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 25px;
+        }
+        .table-node {
+            aspect-ratio: 1/1;
+            /* Angled corners for Sci-Fi look */
+            clip-path: polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%);
+            background: rgba(30, 30, 50, 0.6);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; position: relative;
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: 0.3s;
+        }
+        .table-node .t-num { font-size: 28px; font-family: 'Orbitron'; }
+        .table-node .t-status { font-size: 12px; opacity: 0.7; margin-top: 5px; }
+        
+        /* Table Status States */
+        .table-node.seated {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 20px var(--neon-blue) inset;
+            animation: glowPulseBlue 3s infinite alternate;
+        }
+        .table-node.payment {
+            border-color: var(--neon-red);
+            box-shadow: 0 0 20px var(--neon-red) inset;
+            animation: glowPulseRed 1s infinite alternate;
+        }
+
+        /* --- MODE B: TAKEAWAY (Data Grid) --- */
+        .speed-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;
+        }
+        .data-btn {
+            height: 110px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            /* Angled Border */
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s;
+        }
+        .data-btn:hover {
+            background: rgba(0, 243, 255, 0.2);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+        .data-btn .price { color: var(--neon-blue); font-weight: bold; margin-top: 8px; }
+
+        /* --- MODE C: KIOSK (Holographic Menu) --- */
+        .kiosk-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px;
+        }
+        .holo-card {
+            border-radius: 12px; overflow: hidden;
+            border: 1px solid var(--glass-border);
+            transition: 0.3s;
+        }
+        .holo-card:hover { border-color: var(--neon-purple); box-shadow: 0 0 20px var(--neon-purple); }
+        .holo-img {
+            height: 180px; background: rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255,255,255,0.3); font-family: 'Orbitron';
+            position: relative;
+            overflow: hidden;
+        }
+        /* Scanline effect on images */
+        .holo-img::after {
+            content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
+            background: linear-gradient(transparent 50%, rgba(0, 243, 255, 0.05) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+        .holo-body { padding: 20px; }
+        .holo-price { color: var(--neon-green); font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 5px var(--neon-green);}
+
+
+        /* --- THE CART (Right Sidebar) --- */
+        .cart-panel {
+            border-radius: 16px;
+            display: flex; flex-direction: column;
+            border-left: 1px solid var(--neon-blue); /* Glowing left edge */
+        }
+        .cart-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .cart-items { flex: 1; padding: 20px; overflow-y: auto; }
+        .cart-item {
+            display: flex; justify-content: space-between;
+            padding: 12px 0; border-bottom: 1px dotted rgba(255,255,255,0.2);
+            font-size: 15px;
+        }
+        .cart-footer { padding: 25px; background: rgba(0,0,0,0.2); }
+        
+        /* The Big Glowing Button */
+        .btn-neon-pay {
+            width: 100%; padding: 20px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+            border: none; color: white; font-family: 'Orbitron'; font-size: 18px;
+            clip-path: polygon(5% 0, 100% 0, 100% 70%, 95% 100%, 0 100%, 0 30%);
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--neon-purple);
+            transition: 0.3s;
+            text-shadow: 0 0 5px white;
+        }
+        .btn-neon-pay:hover { box-shadow: 0 0 40px var(--neon-purple), 0 0 10px white inset; }
+
+
+        /* --- ANIMATIONS --- */
+        @keyframes glowPulseBlue { from { box-shadow: 0 0 10px var(--neon-blue) inset; } to { box-shadow: 0 0 25px var(--neon-blue) inset, 0 0 5px var(--neon-blue); } }
+        @keyframes glowPulseRed { 0% { opacity: 1; } 50% { opacity: 0.6; box-shadow: 0 0 30px var(--neon-red) inset; } 100% { opacity: 1; } }
+        
+        .hidden { display: none !important; }
+
+        /* --- DEV CONTROLS --- */
+        .dev-controls {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 10px 25px; border-radius: 50px;
+            display: flex; gap: 15px; z-index: 1000; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .dev-btn {
+            background: transparent; color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.3);
+            padding: 10px 20px; border-radius: 30px; cursor: pointer; font-family: 'Orbitron'; font-size: 12px;
+            transition: 0.3s;
+        }
+        .dev-btn.active { background: var(--neon-blue); color: black; border-color: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-shell">
+        <header class="status-header tech-font">
+            <div>// TERMINAL.ID: XF-992 // <span class="system-online">SYSTEM: ONLINE</span></div>
+            <div>[ TIME: 22:45:01 ]</div>
+        </header>
+
+        <div class="content-split" id="appLayout">
+            
+            <nav class="glass-panel nav-sidebar" id="mainNav">
+                <div class="nav-item active"><i class="fas fa-home"></i> H</div>
+                <div class="nav-item">M</div>
+                <div class="nav-item">S</div>
+            </nav>
+
+            <main class="glass-panel main-view-container">
+                
+                <div id="view-dine-in">
+                    <h2 class="tech-font" style="margin-bottom: 25px; color: var(--neon-blue);">Sector Map // Zone Alpha</h2>
+                    <div class="floor-plan-grid">
+                        <div class="table-node">
+                            <span class="t-num">01</span><span class="t-status">VACANT</span>
+                        </div>
+                        <div class="table-node seated">
+                            <span class="t-num">02</span><span class="t-status" style="color:var(--neon-blue)">ACTIVE (4)</span>
+                        </div>
+                        <div class="table-node">
+                            <span class="t-num">03</span><span class="t-status">VACANT</span>
+                        </div>
+                        <div class="table-node payment">
+                            <span class="t-num">04</span><span class="t-status" style="color:var(--neon-red)">PAYMENT REQ.</span>
+                        </div>
+                        <div class="table-node seated">
+                             <span class="t-num">05</span><span class="t-status" style="color:var(--neon-blue)">ACTIVE (2)</span>
+                        </div>
+                         <div class="table-node">
+                            <span class="t-num">06</span><span class="t-status">VACANT</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-takeaway" class="hidden">
+                    <div style="margin-bottom: 25px; display: flex; gap:10px;">
+                        <input type="text" placeholder="> INPUT ITEM CODE OR SCAN ID..." style="flex:1; padding: 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--neon-blue); color: white; font-family: 'Rajdhani';">
+                    </div>
+                    <h3 class="tech-font" style="margin-bottom: 15px;">Rapid Access // Top Items</h3>
+                    <div class="speed-grid">
+                        <button class="data-btn tech-font">HYPER-CAF<span class="price">4.50 UNIT</span></button>
+                        <button class="data-btn tech-font">SYNTH-LATTE<span class="price">5.00 UNIT</span></button>
+                        <button class="data-btn tech-font">NUTRI-BAR<span class="price">3.50 UNIT</span></button>
+                        <button class="data-btn tech-font">PLASMA TEA<span class="price">3.00 UNIT</span></button>
+                        <button class="data-btn tech-font">DATA-CHIP(S)<span class="price">2.50 UNIT</span></button>
+                    </div>
+                </div>
+
+                 <div id="view-kiosk" class="hidden">
+                    <div style="text-align: center; margin-bottom: 40px;">
+                        <h1 class="tech-font" style="font-size: 3em; text-shadow: 0 0 15px var(--neon-purple);">INITIATE ORDER</h1>
+                        <p style="letter-spacing: 2px; color: var(--neon-blue);">Select Nourishment Modules</p>
+                    </div>
+                    <div class="kiosk-grid">
+                        <div class="glass-panel holo-card">
+                            <div class="holo-img">[ VISUAL MISSING ]</div>
+                            <div class="holo-body">
+                                <div class="tech-font" style="font-size: 1.3rem;">Quantum Burger</div>
+                                <div class="holo-price">12.99 CREDITS</div>
+                            </div>
+                        </div>
+                        <div class="glass-panel holo-card">
+                            <div class="holo-img">[ VISUAL MISSING ]</div>
+                            <div class="holo-body">
+                                <div class="tech-font" style="font-size: 1.3rem;">Zero-G Salad</div>
+                                <div class="holo-price">9.50 CREDITS</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+
+            <aside class="glass-panel cart-panel" id="cartPanel">
+                <div class="cart-header tech-font">
+                    <h3 style="color: var(--neon-purple)">> Current Manifest</h3>
+                    <div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">UNIT: NODE-02 / OPERATOR: SARAH</div>
+                </div>
+                <div class="cart-items">
+                    <div class="cart-item">
+                        <div>1x Quantum Burger</div>
+                        <div style="font-family: 'Orbitron'">12.99</div>
+                    </div>
+                    <div class="cart-item">
+                        <div>1x Plasma Tea</div>
+                        <div style="font-family: 'Orbitron'">3.00</div>
+                    </div>
+                     <div class="cart-item" style="color: var(--neon-green)">
+                        <div>> Applied Discount</div>
+                        <div style="font-family: 'Orbitron'">-2.00</div>
+                    </div>
+                </div>
+                <div class="cart-footer">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-family: 'Orbitron'; font-size: 1.4rem;">
+                        <span>TOTAL:</span>
+                        <span style="color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue);">13.99 CR</span>
+                    </div>
+                    <button class="btn-neon-pay">AUTHORIZE PAYMENT</button>
+                </div>
+            </aside>
+
+        </div>
+
+    </div>
+
+    <div class="dev-controls">
+        <button class="dev-btn active" onclick="setMode('dine-in', this)">CYBER-DINE</button>
+        <button class="dev-btn" onclick="setMode('takeaway', this)">RAPID-PORT</button>
+        <button class="dev-btn" onclick="setMode('kiosk', this)">HOLO-KIOSK</button>
+    </div>
+
+    <script>
+        // Same logic as before, just adapted CSS classes
+        function setMode(mode, btn) {
+            document.querySelectorAll('.dev-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            document.getElementById('view-dine-in').classList.add('hidden');
+            document.getElementById('view-takeaway').classList.add('hidden');
+            document.getElementById('view-kiosk').classList.add('hidden');
+
+            const appLayout = document.getElementById('appLayout');
+            const mainNav = document.getElementById('mainNav');
+            const cartPanel = document.getElementById('cartPanel');
+
+            if(mode === 'dine-in') {
+                document.getElementById('view-dine-in').classList.remove('hidden');
+                appLayout.style.gridTemplateColumns = "90px 1fr 380px"; 
+                mainNav.style.display = "flex"; cartPanel.style.display = "flex";
+            }
+            else if (mode === 'takeaway') {
+                document.getElementById('view-takeaway').classList.remove('hidden');
+                appLayout.style.gridTemplateColumns = "1fr 380px"; // Hide Nav
+                mainNav.style.display = "none"; cartPanel.style.display = "flex";
+            }
+            else if (mode === 'kiosk') {
+                document.getElementById('view-kiosk').classList.remove('hidden');
+                appLayout.style.gridTemplateColumns = "1fr"; // Full Screen
+                mainNav.style.display = "none"; cartPanel.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant POS</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons (Alternative to Lucide for easy HTML usage) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Hide Scrollbar but keep functionality */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-slide-in { animation: slideInRight 0.3s ease-out forwards; }
+        .animate-zoom-in { animation: zoomIn 0.2s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 overflow-hidden h-screen flex">
+
+    <!-- 1. Left Sidebar (Navigation) -->
+    <aside class="w-20 bg-white border-r border-slate-200 flex flex-col items-center py-6 gap-6 z-20 flex-shrink-0">
+        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200 mb-4 cursor-default">
+            <i class="ph-bold ph-chef-hat text-xl"></i>
+        </div>
+        
+        <div class="flex flex-col gap-4 w-full px-2">
+            <button class="p-3 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-200 transition-all duration-200">
+                <i class="ph-bold ph-squares-four text-xl"></i>
+            </button>
+            <button class="p-3 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200">
+                <i class="ph-bold ph-receipt text-xl"></i>
+            </button>
+            <button class="p-3 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200">
+                <i class="ph-bold ph-clock text-xl"></i>
+            </button>
+            <button class="p-3 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200">
+                <i class="ph-bold ph-gear text-xl"></i>
+            </button>
+        </div>
+
+        <div class="mt-auto px-2 w-full">
+           <button class="w-full p-3 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200">
+                <i class="ph-bold ph-sign-out text-xl"></i>
+           </button>
+        </div>
+    </aside>
+
+    <!-- 2. Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0">
+        
+        <!-- Header -->
+        <header class="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">New Order</h1>
+                <p id="current-date" class="text-sm text-slate-400">Loading date...</p>
+            </div>
+            
+            <div class="flex items-center gap-4 bg-slate-100 rounded-xl p-1 pr-4 w-96 transition-all focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-white">
+                <i class="ph-bold ph-magnifying-glass text-slate-400 ml-3 text-lg"></i>
+                <input 
+                    type="text"
+                    id="search-input"
+                    placeholder="Search menu items..."
+                    class="bg-transparent border-none outline-none w-full text-sm placeholder-slate-400 py-2"
+                />
+            </div>
+
+            <div class="flex items-center gap-3">
+                 <div class="text-right hidden md:block">
+                     <p class="text-sm font-semibold">Alex Johnson</p>
+                     <p class="text-xs text-slate-400">Cashier #4</p>
+                 </div>
+                 <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+                     <i class="ph-bold ph-user text-xl"></i>
+                 </div>
+            </div>
+        </header>
+
+        <!-- Content Body -->
+        <div class="flex-1 overflow-hidden relative">
+            <div class="absolute inset-0 overflow-y-auto p-8">
+                
+                <!-- Categories -->
+                <div id="category-container" class="flex gap-4 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+                    <!-- Categories injected by JS -->
+                </div>
+
+                <!-- Grid -->
+                <div id="menu-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 pb-20">
+                    <!-- Menu Items injected by JS -->
+                </div>
+                
+                <!-- Empty State (Hidden by default) -->
+                <div id="empty-state" class="hidden flex-col items-center justify-center py-20 text-slate-400">
+                    <i class="ph-duotone ph-magnifying-glass text-5xl mb-4 opacity-20"></i>
+                    <p>No items found for "<span id="search-term-display"></span>"</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 3. Right Sidebar (Cart) -->
+    <aside class="w-96 bg-white border-l border-slate-200 flex flex-col z-10 shadow-xl flex-shrink-0">
+        <!-- Cart Header -->
+        <div class="p-6 border-b border-slate-100">
+            <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg mb-6">
+                <button 
+                    id="btn-dine-in"
+                    class="flex-1 py-2 text-sm font-semibold rounded-md transition-all bg-white text-blue-600 shadow-sm"
+                    onclick="setOrderType('dine-in')"
+                >
+                    Dine In
+                </button>
+                <button 
+                    id="btn-takeaway"
+                    class="flex-1 py-2 text-sm font-semibold rounded-md transition-all text-slate-500 hover:text-slate-700"
+                    onclick="setOrderType('takeaway')"
+                >
+                    Takeaway
+                </button>
+            </div>
+            
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-slate-800">Current Order</h2>
+                <button 
+                    onclick="clearCart()"
+                    class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Clear Cart"
+                >
+                    <i class="ph-bold ph-arrow-counter-clockwise text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Cart Items -->
+        <div id="cart-container" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <!-- Cart Items injected by JS -->
+            <div id="cart-empty-state" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
+                <div class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center">
+                     <div class="relative">
+                        <div class="absolute -inset-1 rounded-full bg-slate-100 animate-pulse opacity-75"></div>
+                        <i class="ph-duotone ph-coffee text-3xl relative opacity-50"></i>
+                     </div>
+                </div>
+                <p class="font-medium">Start adding items</p>
+            </div>
+        </div>
+
+        <!-- Cart Footer -->
+        <div class="p-6 bg-slate-50 border-t border-slate-200">
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between text-slate-500 text-sm">
+                    <span>Subtotal</span>
+                    <span>$<span id="total-subtotal">0.00</span></span>
+                </div>
+                <div class="flex justify-between text-slate-500 text-sm">
+                    <span>Tax (10%)</span>
+                    <span>$<span id="total-tax">0.00</span></span>
+                </div>
+                <div class="border-t border-slate-200 pt-3 flex justify-between items-end">
+                    <span class="text-slate-800 font-bold">Total</span>
+                    <span class="text-2xl font-bold text-blue-600">$<span id="total-amount">0.00</span></span>
+                </div>
+            </div>
+
+            <button 
+                id="btn-pay-now"
+                onclick="openPaymentModal()"
+                disabled
+                class="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+            >
+                <span>Pay Now</span>
+                <i class="ph-bold ph-caret-right text-xl group-hover:translate-x-1 transition-transform"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- 4. Payment Modal Overlay -->
+    <div id="payment-modal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-zoom-in">
+            
+            <!-- Step 1: Payment Selection -->
+            <div id="payment-step-1">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 class="text-xl font-bold text-slate-800">Payment Method</h3>
+                    <button onclick="closePaymentModal()" class="text-slate-400 hover:text-slate-600">
+                        <i class="ph-bold ph-x text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                     <div class="text-center mb-8">
+                        <p class="text-slate-500 mb-1">Total Amount</p>
+                        <p class="text-4xl font-bold text-blue-600">$<span id="modal-total">0.00</span></p>
+                     </div>
+
+                     <div class="grid grid-cols-2 gap-4">
+                        <button onclick="processPayment('card')" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-slate-100 hover:border-blue-500 hover:bg-blue-50 transition-all group">
+                            <i class="ph-duotone ph-credit-card text-3xl text-slate-400 group-hover:text-blue-500"></i>
+                            <span class="font-semibold text-slate-600 group-hover:text-blue-600">Card</span>
+                        </button>
+                        <button onclick="processPayment('cash')" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-slate-100 hover:border-green-500 hover:bg-green-50 transition-all group">
+                            <i class="ph-duotone ph-money text-3xl text-slate-400 group-hover:text-green-500"></i>
+                            <span class="font-semibold text-slate-600 group-hover:text-green-600">Cash</span>
+                        </button>
+                     </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Processing -->
+            <div id="payment-step-processing" class="hidden p-12 flex flex-col items-center justify-center min-h-[300px]">
+                <div class="flex items-center gap-2 text-blue-600 font-medium text-lg">
+                    <div class="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                    <div class="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                    <div class="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+                </div>
+                <p class="mt-4 text-slate-500">Processing Payment...</p>
+            </div>
+
+            <!-- Step 3: Success -->
+            <div id="payment-step-success" class="hidden p-12 flex flex-col items-center text-center animate-zoom-in">
+                <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6">
+                    <i class="ph-bold ph-check text-4xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-slate-800 mb-2">Order Confirmed!</h3>
+                <p class="text-slate-500">Receipt sent to printer.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Data ---
+        const CATEGORIES = [
+            { id: 'all', name: 'All Menu', icon: 'ph-squares-four' },
+            { id: 'burger', name: 'Burgers', icon: 'ph-knife-fork' },
+            { id: 'drinks', name: 'Drinks', icon: 'ph-beer-bottle' },
+            { id: 'coffee', name: 'Coffee', icon: 'ph-coffee' },
+            { id: 'dessert', name: 'Desserts', icon: 'ph-ice-cream' },
+        ];
+
+        const MENU_ITEMS = [
+            { id: 1, name: 'Classic Cheeseburger', category: 'burger', price: 12.99, color: 'bg-orange-100 text-orange-600', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=60' },
+            { id: 2, name: 'Double Bacon Melt', category: 'burger', price: 15.50, color: 'bg-red-100 text-red-600', image: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=500&q=60' },
+            { id: 3, name: 'Crispy Chicken', category: 'burger', price: 11.00, color: 'bg-yellow-100 text-yellow-600', image: 'https://images.unsplash.com/photo-1615557960916-5f4791effe9d?auto=format&fit=crop&w=500&q=60' },
+            { id: 4, name: 'Mushroom Swiss', category: 'burger', price: 13.50, color: 'bg-amber-100 text-amber-600', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=60' },
+            { id: 5, name: 'Iced Latte', category: 'coffee', price: 4.50, color: 'bg-stone-100 text-stone-600', image: 'https://images.unsplash.com/photo-1517701604599-bb29b5c7355c?auto=format&fit=crop&w=500&q=60' },
+            { id: 6, name: 'Cappuccino', category: 'coffee', price: 4.00, color: 'bg-stone-100 text-stone-600', image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=500&q=60' },
+            { id: 7, name: 'Craft Cola', category: 'drinks', price: 3.00, color: 'bg-slate-100 text-slate-600', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=500&q=60' },
+            { id: 8, name: 'Lemonade', category: 'drinks', price: 3.50, color: 'bg-yellow-50 text-yellow-500', image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=500&q=60' },
+            { id: 9, name: 'Strawberry Shake', category: 'dessert', price: 6.00, color: 'bg-pink-100 text-pink-600', image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=500&q=60' },
+            { id: 10, name: 'Choco Lava Cake', category: 'dessert', price: 7.50, color: 'bg-neutral-100 text-neutral-600', image: 'https://images.unsplash.com/photo-1617305855078-d7b3b320d320?auto=format&fit=crop&w=500&q=60' },
+            { id: 11, name: 'Veggie Supreme', category: 'burger', price: 10.50, color: 'bg-green-100 text-green-600', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=60' },
+            { id: 12, name: 'Espresso', category: 'coffee', price: 3.00, color: 'bg-stone-100 text-stone-600', image: 'https://images.unsplash.com/photo-1610889556285-a77889132b20?auto=format&fit=crop&w=500&q=60' },
+        ];
+
+        // --- State ---
+        let state = {
+            activeCategory: 'all',
+            searchQuery: '',
+            cart: [],
+            orderType: 'dine-in'
+        };
+
+        // --- DOM Elements ---
+        const els = {
+            dateDisplay: document.getElementById('current-date'),
+            searchInput: document.getElementById('search-input'),
+            categoryContainer: document.getElementById('category-container'),
+            menuGrid: document.getElementById('menu-grid'),
+            emptyState: document.getElementById('empty-state'),
+            searchTermDisplay: document.getElementById('search-term-display'),
+            cartContainer: document.getElementById('cart-container'),
+            cartEmptyState: document.getElementById('cart-empty-state'),
+            totalSubtotal: document.getElementById('total-subtotal'),
+            totalTax: document.getElementById('total-tax'),
+            totalAmount: document.getElementById('total-amount'),
+            modalTotal: document.getElementById('modal-total'),
+            payBtn: document.getElementById('btn-pay-now'),
+            paymentModal: document.getElementById('payment-modal'),
+            paymentStep1: document.getElementById('payment-step-1'),
+            paymentStepProcessing: document.getElementById('payment-step-processing'),
+            paymentStepSuccess: document.getElementById('payment-step-success'),
+            btnDineIn: document.getElementById('btn-dine-in'),
+            btnTakeaway: document.getElementById('btn-takeaway')
+        };
+
+        // --- Initialization ---
+        function init() {
+            // Set Date
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            els.dateDisplay.textContent = new Date().toLocaleDateString('en-US', options);
+
+            // Render Initial State
+            renderCategories();
+            renderMenu();
+            renderCart();
+
+            // Event Listeners
+            els.searchInput.addEventListener('input', (e) => {
+                state.searchQuery = e.target.value;
+                renderMenu();
+            });
+        }
+
+        // --- Render Functions ---
+
+        function renderCategories() {
+            els.categoryContainer.innerHTML = CATEGORIES.map(cat => {
+                const isActive = state.activeCategory === cat.id;
+                const baseClass = "flex items-center gap-2 px-6 py-3 rounded-xl border transition-all duration-200 whitespace-nowrap cursor-pointer select-none";
+                const activeClass = "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200";
+                const inactiveClass = "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50";
+                
+                return `
+                    <button 
+                        onclick="setCategory('${cat.id}')"
+                        class="${baseClass} ${isActive ? activeClass : inactiveClass}"
+                    >
+                        <i class="ph-bold ${cat.icon} text-lg"></i>
+                        <span class="font-medium">${cat.name}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderMenu() {
+            const filtered = MENU_ITEMS.filter(item => {
+                const matchesCategory = state.activeCategory === 'all' || item.category === state.activeCategory;
+                const matchesSearch = item.name.toLowerCase().includes(state.searchQuery.toLowerCase());
+                return matchesCategory && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                els.menuGrid.innerHTML = '';
+                els.emptyState.classList.remove('hidden');
+                els.emptyState.classList.add('flex');
+                els.searchTermDisplay.textContent = state.searchQuery;
+            } else {
+                els.emptyState.classList.add('hidden');
+                els.emptyState.classList.remove('flex');
+                
+                els.menuGrid.innerHTML = filtered.map(item => `
+                    <button 
+                        onclick="addToCart(${item.id})"
+                        class="group relative flex flex-col items-center p-0 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-200 transition-all duration-200 overflow-hidden text-left animate-fade-in"
+                    >
+                        <div class="h-32 w-full overflow-hidden bg-gray-100 relative">
+                            <img 
+                                src="${item.image}" 
+                                alt="${item.name}"
+                                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                onerror="this.style.display='none'; this.parentElement.classList.add('${item.color.split(' ')[0]}');"
+                            />
+                            <div class="absolute inset-0 opacity-0 group-hover:opacity-10 bg-black transition-opacity"></div>
+                        </div>
+                        
+                        <div class="p-4 w-full">
+                            <h3 class="font-semibold text-slate-800 text-sm leading-tight mb-1 truncate w-full">${item.name}</h3>
+                            <p class="text-blue-600 font-bold">$${item.price.toFixed(2)}</p>
+                        </div>
+                    </button>
+                `).join('');
+            }
+        }
+
+        function renderCart() {
+            if (state.cart.length === 0) {
+                els.cartContainer.innerHTML = '';
+                els.cartContainer.appendChild(els.cartEmptyState);
+                els.payBtn.disabled = true;
+                updateTotals();
+                return;
+            }
+
+            els.cartEmptyState.remove(); // ensure empty state is gone logic handled by string build below usually but need to clear first
+
+            const cartHTML = state.cart.map(item => `
+                <div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm animate-slide-in">
+                    <div class="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                         <img src="${item.image}" alt="" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <h4 class="font-medium text-slate-800 text-sm truncate">${item.name}</h4>
+                      <p class="text-blue-600 font-semibold text-sm">$${(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-50 rounded-lg p-1">
+                      <button 
+                        onclick="updateQuantity(${item.id}, -1)"
+                        class="w-6 h-6 flex items-center justify-center rounded-md bg-white text-slate-600 shadow-sm hover:bg-slate-100 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        ${item.quantity <= 1 ? 'disabled' : ''}
+                      >
+                        <i class="ph-bold ph-minus text-xs"></i>
+                      </button>
+                      <span class="text-sm font-semibold w-4 text-center">${item.quantity}</span>
+                      <button 
+                        onclick="updateQuantity(${item.id}, 1)"
+                        class="w-6 h-6 flex items-center justify-center rounded-md bg-white text-blue-600 shadow-sm hover:bg-slate-100 active:scale-95 transition-all"
+                      >
+                        <i class="ph-bold ph-plus text-xs"></i>
+                      </button>
+                    </div>
+                    <button 
+                        onclick="removeFromCart(${item.id})"
+                        class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                        <i class="ph-bold ph-trash text-lg"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            els.cartContainer.innerHTML = cartHTML;
+            els.payBtn.disabled = false;
+            updateTotals();
+        }
+
+        function updateTotals() {
+            const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tax = subtotal * 0.1;
+            const total = subtotal + tax;
+
+            els.totalSubtotal.textContent = subtotal.toFixed(2);
+            els.totalTax.textContent = tax.toFixed(2);
+            els.totalAmount.textContent = total.toFixed(2);
+            els.modalTotal.textContent = total.toFixed(2);
+        }
+
+        // --- Action Handlers ---
+
+        window.setCategory = (id) => {
+            state.activeCategory = id;
+            renderCategories();
+            renderMenu();
+        };
+
+        window.addToCart = (id) => {
+            const item = MENU_ITEMS.find(i => i.id === id);
+            const existing = state.cart.find(i => i.id === id);
+
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                state.cart.push({ ...item, quantity: 1 });
+            }
+            renderCart();
+        };
+
+        window.updateQuantity = (id, delta) => {
+            const item = state.cart.find(i => i.id === id);
+            if (item) {
+                const newQty = item.quantity + delta;
+                if (newQty >= 1) {
+                    item.quantity = newQty;
+                    renderCart();
+                }
+            }
+        };
+
+        window.removeFromCart = (id) => {
+            state.cart = state.cart.filter(i => i.id !== id);
+            
+            // If empty, force re-render to show empty state
+            if(state.cart.length === 0) {
+                els.cartContainer.innerHTML = '';
+                els.cartContainer.appendChild(els.cartEmptyState);
+                els.payBtn.disabled = true;
+                updateTotals();
+            } else {
+                renderCart();
+            }
+        };
+
+        window.clearCart = () => {
+            state.cart = [];
+            els.cartContainer.innerHTML = '';
+            els.cartContainer.appendChild(els.cartEmptyState);
+            els.payBtn.disabled = true;
+            updateTotals();
+        };
+
+        window.setOrderType = (type) => {
+            state.orderType = type;
+            
+            // Update UI classes
+            if (type === 'dine-in') {
+                els.btnDineIn.className = "flex-1 py-2 text-sm font-semibold rounded-md transition-all bg-white text-blue-600 shadow-sm";
+                els.btnTakeaway.className = "flex-1 py-2 text-sm font-semibold rounded-md transition-all text-slate-500 hover:text-slate-700";
+            } else {
+                els.btnTakeaway.className = "flex-1 py-2 text-sm font-semibold rounded-md transition-all bg-white text-blue-600 shadow-sm";
+                els.btnDineIn.className = "flex-1 py-2 text-sm font-semibold rounded-md transition-all text-slate-500 hover:text-slate-700";
+            }
+        };
+
+        // --- Payment Modal Logic ---
+
+        window.openPaymentModal = () => {
+            if (state.cart.length === 0) return;
+            els.paymentModal.classList.remove('hidden');
+            // Reset modal state
+            els.paymentStep1.classList.remove('hidden');
+            els.paymentStepProcessing.classList.add('hidden');
+            els.paymentStepSuccess.classList.add('hidden');
+        };
+
+        window.closePaymentModal = () => {
+            els.paymentModal.classList.add('hidden');
+        };
+
+        window.processPayment = (method) => {
+            // Show processing
+            els.paymentStep1.classList.add('hidden');
+            els.paymentStepProcessing.classList.remove('hidden');
+            els.paymentStepProcessing.classList.add('flex');
+
+            // Simulate API call
+            setTimeout(() => {
+                // Show Success
+                els.paymentStepProcessing.classList.add('hidden');
+                els.paymentStepProcessing.classList.remove('flex');
+                els.paymentStepSuccess.classList.remove('hidden');
+                
+                // Clear Cart and Close after delay
+                setTimeout(() => {
+                    closePaymentModal();
+                    clearCart();
+                }, 2000);
+            }, 1500);
+        };
+
+        // Start App
+        init();
+
+    </script>
+</body>
+</html>

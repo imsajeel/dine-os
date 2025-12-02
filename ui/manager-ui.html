@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Dashboard - OmniPOS</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- ApexCharts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        .fade-enter { opacity: 0; transform: translateY(10px); }
+        .fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 0.3s, transform 0.3s; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #2563eb;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #2563eb;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 transition-all duration-300 z-20" id="sidebar">
+        <!-- Brand -->
+        <div class="h-16 flex items-center gap-3 px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">O</div>
+            <span class="font-bold text-white tracking-tight">Omni<span class="text-blue-500">POS</span></span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+            <button onclick="switchView('overview')" id="nav-overview" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white transition-colors">
+                <i class="ph-bold ph-squares-four text-lg"></i>
+                Overview
+            </button>
+            <button onclick="switchView('branches')" id="nav-branches" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                <i class="ph-bold ph-storefront text-lg"></i>
+                Branches
+            </button>
+            <button onclick="switchView('staff')" id="nav-staff" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                <i class="ph-bold ph-users text-lg"></i>
+                Staff
+            </button>
+            
+            <div class="pt-4 pb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Operations</div>
+            
+            <button onclick="switchView('menu')" id="nav-menu" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                <i class="ph-bold ph-fork-knife text-lg"></i>
+                Menu Mgmt
+            </button>
+             <button onclick="switchView('floor')" id="nav-floor" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                <i class="ph-bold ph-armchair text-lg"></i>
+                Floor Plan
+            </button>
+
+            <div class="pt-4 pb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">System</div>
+
+            <button onclick="switchView('analytics')" id="nav-analytics" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                <i class="ph-bold ph-chart-line-up text-lg"></i>
+                Analytics
+            </button>
+            <button onclick="switchView('settings')" id="nav-settings" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                <i class="ph-bold ph-gear text-lg"></i>
+                Settings
+            </button>
+        </nav>
+
+        <!-- User Profile & Role Switcher -->
+        <div class="p-4 border-t border-slate-800 bg-slate-900">
+            <div class="flex items-center gap-3 mb-3">
+                <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=100&q=80" alt="Admin" class="w-10 h-10 rounded-full object-cover ring-2 ring-slate-700">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-white truncate" id="user-name">David Miller</p>
+                    <p class="text-xs text-slate-500 truncate" id="user-role-label">Regional Manager</p>
+                </div>
+            </div>
+            
+            <!-- Simulating Role Switching -->
+            <select id="role-switcher" onchange="toggleRole(this.value)" class="w-full bg-slate-800 text-xs text-slate-300 border-none rounded px-2 py-1 outline-none cursor-pointer hover:bg-slate-700">
+                <option value="admin">View as: Admin</option>
+                <option value="manager">View as: Manager</option>
+            </select>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        
+        <!-- Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+            <h2 class="text-xl font-bold text-slate-800" id="page-title">Dashboard Overview</h2>
+            
+            <div class="flex items-center gap-4">
+                <div class="relative hidden md:block">
+                    <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" placeholder="Search..." class="pl-10 pr-4 py-2 bg-slate-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-64">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase tracking-wide" id="branch-badge">All Branches</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Views -->
+        <div class="flex-1 overflow-y-auto p-8" id="main-content">
+            
+            <!-- VIEW: OVERVIEW -->
+            <div id="view-overview" class="space-y-8 animate-fade-in">
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 font-medium">Total Revenue</p>
+                                <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-revenue">$124,500</h3>
+                            </div>
+                            <div class="p-2 bg-green-50 text-green-600 rounded-lg"><i class="ph-bold ph-currency-dollar text-xl"></i></div>
+                        </div>
+                        <div class="text-sm text-green-600 font-medium">+12.5% <span class="text-slate-400 font-normal">vs last month</span></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 font-medium">Orders</p>
+                                <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-orders">1,482</h3>
+                            </div>
+                            <div class="p-2 bg-orange-50 text-orange-600 rounded-lg"><i class="ph-bold ph-receipt text-xl"></i></div>
+                        </div>
+                        <div class="text-sm text-green-600 font-medium">+8.2% <span class="text-slate-400 font-normal">vs last month</span></div>
+                    </div>
+                     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 font-medium">Labor Cost</p>
+                                <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-labor">22%</h3>
+                            </div>
+                            <div class="p-2 bg-red-50 text-red-600 rounded-lg"><i class="ph-bold ph-users-three text-xl"></i></div>
+                        </div>
+                        <div class="text-sm text-red-500 font-medium">+1.2% <span class="text-slate-400 font-normal">vs target</span></div>
+                    </div>
+                     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 font-medium">Avg Ticket Time</p>
+                                <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-ticket">14m 20s</h3>
+                            </div>
+                            <div class="p-2 bg-purple-50 text-purple-600 rounded-lg"><i class="ph-bold ph-timer text-xl"></i></div>
+                        </div>
+                        <div class="text-sm text-green-600 font-medium">-45s <span class="text-slate-400 font-normal">vs last month</span></div>
+                    </div>
+                </div>
+
+                <!-- Charts Area -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+                        <h3 class="font-bold text-slate-800 mb-6">Revenue Trend</h3>
+                        <div id="revenueChart" class="w-full h-80"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                        <h3 class="font-bold text-slate-800 mb-6">Branch Performance</h3>
+                        <div class="flex-1 space-y-4 overflow-y-auto" id="top-branches-list">
+                            <!-- Injected -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: BRANCHES -->
+            <div id="view-branches" class="hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <p class="text-slate-500">Manage all your restaurant locations.</p>
+                    <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-lg shadow-blue-200">
+                        <i class="ph-bold ph-plus"></i> New Branch
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="branches-grid"></div>
+            </div>
+
+            <!-- VIEW: STAFF -->
+            <div id="view-staff" class="hidden space-y-6">
+                 <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">Staff Directory</h3>
+                        <button class="text-blue-600 font-medium text-sm hover:underline">+ Add Employee</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-6 py-4">Employee</th>
+                                    <th class="px-6 py-4">Role</th>
+                                    <th class="px-6 py-4">Branch</th>
+                                    <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100" id="staff-table-body">
+                                <!-- JS Injected -->
+                            </tbody>
+                        </table>
+                    </div>
+                 </div>
+            </div>
+
+            <!-- VIEW: MENU -->
+            <div id="view-menu" class="hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <div class="flex gap-2">
+                         <button class="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium">All Items</button>
+                         <button class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 text-sm font-medium">Mains</button>
+                         <button class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 text-sm font-medium">Drinks</button>
+                    </div>
+                    <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm">
+                        <i class="ph-bold ph-plus"></i> Add Item
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="menu-grid">
+                     <!-- JS Injected -->
+                </div>
+            </div>
+
+             <!-- VIEW: FLOOR -->
+            <div id="view-floor" class="hidden h-full flex flex-col">
+                <div class="flex justify-between items-center mb-6">
+                     <p class="text-slate-500">Drag tables to rearrange layout.</p>
+                     <button class="bg-slate-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm">
+                        <i class="ph-bold ph-floppy-disk"></i> Save Layout
+                    </button>
+                </div>
+                <div class="bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex-1 relative min-h-[500px]" id="floor-canvas">
+                    <!-- Tables Injected -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
+                        <i class="ph-bold ph-grid-four text-9xl text-slate-400"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: ANALYTICS -->
+            <div id="view-analytics" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-800 mb-4">Sales by Category</h3>
+                        <div id="categoryChart" class="h-80"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-800 mb-4">Busy Hours Heatmap</h3>
+                        <div id="busyChart" class="h-80"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: SETTINGS -->
+            <div id="view-settings" class="hidden max-w-2xl mx-auto space-y-6">
+                <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-slate-800 mb-6 border-b border-slate-100 pb-4">General Settings</h3>
+                    
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium text-slate-800">System Notifications</p>
+                                <p class="text-sm text-slate-500">Receive alerts for low stock and voids</p>
+                            </div>
+                            <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="toggle1" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300 checked:border-blue-600"/>
+                                <label for="toggle1" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                            </div>
+                        </div>
+
+                         <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium text-slate-800">Dark Mode</p>
+                                <p class="text-sm text-slate-500">Switch dashboard appearance</p>
+                            </div>
+                            <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="toggle2" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300 checked:border-blue-600"/>
+                                <label for="toggle2" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t border-slate-100">
+                         <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Currency Symbol</label>
+                                <input type="text" value="$ (USD)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50" disabled>
+                            </div>
+                             <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Time Zone</label>
+                                <input type="text" value="GMT-5 (EST)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50" disabled>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- NEW BRANCH MODAL (Same as before) -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div id="modal-content" class="bg-white w-full max-w-lg rounded-2xl shadow-2xl transform scale-95 transition-transform duration-300 overflow-hidden">
+             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="text-lg font-bold text-slate-800">Add New Branch</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="ph-bold ph-x text-xl"></i></button>
+            </div>
+            <form id="new-branch-form" onsubmit="handleCreateBranch(event)" class="p-6 space-y-4">
+                <div class="space-y-1">
+                    <label class="text-sm font-medium text-slate-700">Branch Name</label>
+                    <input type="text" name="name" required placeholder="e.g. Downtown Hub" class="w-full px-4 py-2 rounded-lg border border-slate-300 outline-none focus:border-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium text-slate-700">Location</label>
+                        <input type="text" name="location" required placeholder="City" class="w-full px-4 py-2 rounded-lg border border-slate-300 outline-none focus:border-blue-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium text-slate-700">Manager</label>
+                        <input type="text" name="manager" required placeholder="Name" class="w-full px-4 py-2 rounded-lg border border-slate-300 outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="pt-4 flex gap-3">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- Dummy Data ---
+        const BRANCHES = [
+            { id: 1, name: 'Downtown Main', location: 'Seattle, WA', manager: 'Sarah Jenkins', status: 'open', revenue: 12500, orders: 145 },
+            { id: 2, name: 'Westside Mall', location: 'Bellevue, WA', manager: 'Mike Ross', status: 'open', revenue: 8400, orders: 98 },
+            { id: 3, name: 'Airport Kiosk', location: 'SeaTac, WA', manager: 'Emily Blunt', status: 'closed', revenue: 0, orders: 0 },
+        ];
+
+        const STAFF = [
+            { id: 1, name: 'Alex Johnson', role: 'Server', branchId: 1, status: 'Active', img: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' },
+            { id: 2, name: 'Sam Smith', role: 'Chef', branchId: 1, status: 'On Break', img: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100' },
+            { id: 3, name: 'Jessica Doe', role: 'Manager', branchId: 2, status: 'Active', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' },
+            { id: 4, name: 'John Brown', role: 'Bartender', branchId: 1, status: 'Off Duty', img: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100' },
+            { id: 5, name: 'Emily Davis', role: 'Server', branchId: 2, status: 'Active', img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100' },
+        ];
+
+        const MENU = [
+            { name: 'Cheeseburger', price: 12.99, cat: 'Main', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100' },
+            { name: 'Caesar Salad', price: 10.50, cat: 'Main', img: 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?w=100' },
+            { name: 'Craft Cola', price: 3.00, cat: 'Drink', img: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=100' },
+            { name: 'Steak Frites', price: 24.00, cat: 'Main', img: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=100' },
+        ];
+
+        const TABLES = [
+            { id: 1, x: 50, y: 50, w: 80, h: 80, shape: 'round' },
+            { id: 2, x: 200, y: 50, w: 80, h: 80, shape: 'round' },
+            { id: 3, x: 350, y: 50, w: 80, h: 80, shape: 'round' },
+            { id: 4, x: 50, y: 200, w: 120, h: 80, shape: 'rect' },
+            { id: 5, x: 250, y: 200, w: 120, h: 80, shape: 'rect' },
+        ];
+
+        // --- State ---
+        let currentRole = 'admin'; // 'admin' or 'manager'
+        let currentBranchId = 1; // Used if role is manager
+
+        // --- Logic ---
+
+        function toggleRole(role) {
+            currentRole = role;
+            const userLabel = document.getElementById('user-role-label');
+            const navBranches = document.getElementById('nav-branches');
+            const branchBadge = document.getElementById('branch-badge');
+            
+            if (role === 'admin') {
+                userLabel.innerText = "Regional Manager";
+                navBranches.classList.remove('hidden');
+                branchBadge.innerText = "All Branches";
+                renderOverview(BRANCHES);
+            } else {
+                userLabel.innerText = "Branch Manager";
+                navBranches.classList.add('hidden');
+                // Simulate Branch 1 Manager
+                const myBranch = BRANCHES.filter(b => b.id === currentBranchId);
+                branchBadge.innerText = myBranch[0].name;
+                renderOverview(myBranch);
+            }
+            
+            // Re-render current views based on new scope
+            renderStaff();
+            switchView('overview');
+        }
+
+        function renderOverview(data) {
+            // Aggregate Data
+            const totalRev = data.reduce((acc, b) => acc + b.revenue, 0);
+            const totalOrd = data.reduce((acc, b) => acc + b.orders, 0);
+            
+            document.getElementById('kpi-revenue').innerText = "$" + totalRev.toLocaleString();
+            document.getElementById('kpi-orders').innerText = totalOrd.toLocaleString();
+            
+            // Update charts if needed (mock update)
+            initCharts(currentRole);
+            
+            // Update Top Branches (Only visible if admin/multiple data)
+            const list = document.getElementById('top-branches-list');
+            list.innerHTML = '';
+            
+            if (currentRole === 'admin') {
+                data.forEach((b, i) => {
+                     list.innerHTML += `
+                        <div class="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors">
+                            <div class="font-bold text-slate-400">#${i+1}</div>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-slate-800 text-sm">${b.name}</h4>
+                            </div>
+                            <div class="font-bold text-slate-800 text-sm">$${b.revenue.toLocaleString()}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                list.innerHTML = `<div class="text-slate-400 text-sm text-center py-10">You are viewing data for ${data[0].name} only.</div>`;
+            }
+        }
+
+        function renderStaff() {
+            const tbody = document.getElementById('staff-table-body');
+            tbody.innerHTML = '';
+            
+            let filteredStaff = STAFF;
+            if (currentRole === 'manager') {
+                filteredStaff = STAFF.filter(s => s.branchId === currentBranchId);
+            }
+
+            filteredStaff.forEach(s => {
+                const branchName = BRANCHES.find(b => b.id === s.branchId)?.name || 'Unknown';
+                const statusColor = s.status === 'Active' ? 'text-green-600 bg-green-50' : 'text-slate-500 bg-slate-100';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="px-6 py-4 flex items-center gap-3">
+                            <img src="${s.img}" class="w-8 h-8 rounded-full">
+                            <span class="font-medium text-slate-800">${s.name}</span>
+                        </td>
+                        <td class="px-6 py-4">${s.role}</td>
+                        <td class="px-6 py-4">${branchName}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 rounded-md text-xs font-bold uppercase ${statusColor}">${s.status}</span></td>
+                        <td class="px-6 py-4 text-right">
+                            <button class="text-slate-400 hover:text-blue-600"><i class="ph-bold ph-pencil-simple text-lg"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderMenu() {
+            const grid = document.getElementById('menu-grid');
+            grid.innerHTML = MENU.map(item => `
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm group">
+                    <div class="h-32 bg-slate-100 relative overflow-hidden">
+                        <img src="${item.img}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    </div>
+                    <div class="p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-slate-800">${item.name}</h4>
+                            <span class="font-bold text-blue-600">$${item.price}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 uppercase tracking-wide">${item.cat}</p>
+                        <button class="w-full mt-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Edit Item</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderFloor() {
+            const canvas = document.getElementById('floor-canvas');
+            // Clear existing tables to prevent dupes (keep placeholder)
+            canvas.innerHTML = '<div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10"><i class="ph-bold ph-grid-four text-9xl text-slate-400"></i></div>';
+            
+            TABLES.forEach(t => {
+                const el = document.createElement('div');
+                el.className = `absolute bg-white border-2 border-slate-300 shadow-sm flex items-center justify-center font-bold text-slate-500 cursor-move hover:border-blue-500 hover:text-blue-600 transition-colors`;
+                el.style.left = t.x + 'px';
+                el.style.top = t.y + 'px';
+                el.style.width = t.w + 'px';
+                el.style.height = t.h + 'px';
+                el.style.borderRadius = t.shape === 'round' ? '9999px' : '12px';
+                el.innerText = t.id;
+                canvas.appendChild(el);
+            });
+        }
+
+        function renderBranchesGrid() {
+            const grid = document.getElementById('branches-grid');
+            grid.innerHTML = '';
+            
+            // If manager, usually they don't see this grid, but if they do, show only theirs
+            let data = BRANCHES;
+            if (currentRole === 'manager') return; // Hide for manager
+
+            data.forEach(branch => {
+                grid.innerHTML += `
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-bold">${branch.name.charAt(0)}</div>
+                            <span class="text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wide ${branch.status === 'open' ? 'text-green-600 bg-green-50' : 'text-slate-400 bg-slate-100'}">${branch.status}</span>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-800 mb-1">${branch.name}</h3>
+                        <p class="text-sm text-slate-500 mb-4">${branch.location}</p>
+                        <button class="w-full py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50">Manage</button>
+                    </div>
+                `;
+            });
+        }
+
+        // --- Charts ---
+        let revChart, catChart, busyChart;
+
+        function initCharts(role) {
+            // Destroy if exists to re-render
+            if (revChart) revChart.destroy();
+            if (catChart) catChart.destroy();
+            if (busyChart) busyChart.destroy();
+
+            // Revenue Line Chart
+            const revData = role === 'admin' ? [12, 15, 14, 18, 16, 21, 19] : [4, 5, 4.5, 6, 5.5, 7, 6.5];
+            revChart = new ApexCharts(document.querySelector("#revenueChart"), {
+                series: [{ name: 'Revenue', data: revData }],
+                chart: { type: 'area', height: 320, toolbar: { show: false } },
+                colors: ['#2563eb'],
+                fill: { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.05 } },
+                stroke: { curve: 'smooth', width: 2 },
+                xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], labels: { show: true }, axisBorder: {show: false}, axisTicks: {show: false} },
+                grid: { show: true, borderColor: '#f1f5f9' },
+                dataLabels: { enabled: false }
+            });
+            revChart.render();
+
+            // Category Donut
+            catChart = new ApexCharts(document.querySelector("#categoryChart"), {
+                series: [44, 55, 41, 17],
+                labels: ['Burgers', 'Drinks', 'Sides', 'Desserts'],
+                chart: { type: 'donut', height: 320 },
+                colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
+                legend: { position: 'bottom' }
+            });
+            catChart.render();
+
+            // Busy Hours Bar
+            busyChart = new ApexCharts(document.querySelector("#busyChart"), {
+                series: [{ name: 'Orders', data: [10, 25, 40, 90, 120, 80, 40, 20] }],
+                chart: { type: 'bar', height: 320, toolbar: { show: false } },
+                xaxis: { categories: ['11am', '12pm', '1pm', '5pm', '6pm', '7pm', '8pm', '9pm'] },
+                colors: ['#8b5cf6'],
+                grid: { show: false }
+            });
+            busyChart.render();
+        }
+
+
+        // --- Navigation ---
+        function switchView(viewId) {
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors text-slate-300";
+            });
+            const activeBtn = document.getElementById(`nav-${viewId}`);
+            if(activeBtn) activeBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white transition-colors";
+
+            ['overview', 'branches', 'staff', 'menu', 'floor', 'analytics', 'settings'].forEach(id => {
+                document.getElementById(`view-${id}`).classList.add('hidden');
+            });
+
+            const selectedView = document.getElementById(`view-${viewId}`);
+            selectedView.classList.remove('hidden');
+            selectedView.classList.remove('animate-fade-in');
+            void selectedView.offsetWidth;
+            selectedView.classList.add('animate-fade-in');
+
+            const titles = { overview: 'Dashboard Overview', branches: 'Branch Management', staff: 'Staff Directory', menu: 'Menu Management', floor: 'Floor Plan Layout', analytics: 'Performance Analytics', settings: 'System Settings' };
+            document.getElementById('page-title').innerText = titles[viewId];
+        }
+
+        // --- Modals & Initialization ---
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContent = document.getElementById('modal-content');
+        function openModal() { modalOverlay.classList.remove('hidden'); modalOverlay.classList.add('flex'); setTimeout(() => { modalOverlay.classList.remove('opacity-0'); modalContent.classList.remove('scale-95'); modalContent.classList.add('scale-100'); }, 10); }
+        function closeModal() { modalOverlay.classList.add('opacity-0'); modalContent.classList.remove('scale-100'); modalContent.classList.add('scale-95'); setTimeout(() => { modalOverlay.classList.add('hidden'); modalOverlay.classList.remove('flex'); document.getElementById('new-branch-form').reset(); }, 300); }
+        function handleCreateBranch(e) { e.preventDefault(); const fd = new FormData(e.target); BRANCHES.push({ id: BRANCHES.length + 1, name: fd.get('name'), location: fd.get('location'), manager: fd.get('manager'), status: 'open', revenue: 0, orders: 0 }); renderBranchesGrid(); closeModal(); showToast(); }
+        function showToast() { const t = document.getElementById('toast'); t.classList.remove('translate-y-24'); setTimeout(() => { t.classList.add('translate-y-24'); }, 3000); }
+
+        // Start
+        document.addEventListener('DOMContentLoaded', () => {
+            renderOverview(BRANCHES);
+            renderBranchesGrid();
+            renderStaff();
+            renderMenu();
+            renderFloor();
+            initCharts('admin');
+        });
+
+    </script>
+</body>
+</html>
