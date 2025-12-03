@@ -134,7 +134,34 @@ export default function Users() {
                 <input type="password" className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
 
                 <label className="block text-sm font-bold text-slate-700 mb-1">PIN Code (for POS)</label>
-                <input className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" value={formData.pin_code} onChange={e => setFormData({...formData, pin_code: e.target.value})} maxLength={4} />
+                <div className="flex gap-2 mb-3">
+                    <input 
+                        className="w-full p-3 border rounded-lg outline-none focus:border-blue-500" 
+                        value={formData.pin_code} 
+                        onChange={e => setFormData({...formData, pin_code: e.target.value})} 
+                        maxLength={4} 
+                        placeholder="4-digit PIN"
+                    />
+                    <button 
+                        type="button"
+                        onClick={async () => {
+                            const branchId = formData.branch_id || localStorage.getItem('selected_branch_id');
+                            if (!branchId) {
+                                alert('Please select a branch first to generate a unique PIN.');
+                                return;
+                            }
+                            try {
+                                const res = await api.get(`/users/generate-pin?branchId=${branchId}`);
+                                setFormData(prev => ({ ...prev, pin_code: res.data.pin }));
+                            } catch (err) {
+                                console.error('Failed to generate PIN', err);
+                            }
+                        }}
+                        className="bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-bold hover:bg-slate-200 transition-colors whitespace-nowrap"
+                    >
+                        Generate
+                    </button>
+                </div>
 
                 <label className="block text-sm font-bold text-slate-700 mb-1">Role</label>
                 <select className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500 bg-white" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>

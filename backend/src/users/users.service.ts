@@ -43,4 +43,23 @@ export class UsersService {
   async delete(id: string) {
     return this.prisma.users.delete({ where: { id } });
   }
+
+  async checkPin(branchId: string, pin: string) {
+    const user = await this.prisma.users.findFirst({
+        where: { branch_id: branchId, pin_code: pin }
+    });
+    return !!user;
+  }
+
+  async generatePin(branchId: string) {
+    let pin = '';
+    let isUnique = false;
+    while (!isUnique) {
+        // Generate 4 digit PIN
+        pin = Math.floor(1000 + Math.random() * 9000).toString();
+        const exists = await this.checkPin(branchId, pin);
+        if (!exists) isUnique = true;
+    }
+    return pin;
+  }
 }

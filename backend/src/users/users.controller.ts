@@ -26,4 +26,16 @@ export class UsersController {
   delete(@Param('id') id: string) {
     return this.service.delete(id);
   }
+
+  @Get('check-pin')
+  async checkPin(@Query('branchId') branchId: string, @Query('pin') pin: string) {
+    const exists = await this.service.checkPin(branchId, pin);
+    return { exists };
+  }
+
+  @Get('generate-pin')
+  async generatePin(@Query('branchId') branchId: string) {
+    const pin = await this.service.generatePin(branchId);
+    return { pin };
+  }
 }
