@@ -55,8 +55,12 @@ export default function Users() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const user = storage.user || storage;
     const branchId = localStorage.getItem('selected_branch_id');
+    
+    console.log('User object:', user);
+    console.log('Organization ID:', user.organization_id);
     
     const payload = {
         full_name: formData.full_name,
