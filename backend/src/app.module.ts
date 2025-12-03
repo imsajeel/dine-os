@@ -9,9 +9,10 @@ import { ReservationsModule } from './reservations/reservations.module';
 import { BranchesModule } from './branches/branches.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
-  imports: [MenuModule, TablesModule, OrdersModule, ReservationsModule, BranchesModule, UsersModule, AuthModule],
+  imports: [MenuModule, TablesModule, OrdersModule, ReservationsModule, BranchesModule, UsersModule, AuthModule, StatsModule],
   controllers: [AppController],
   providers: [AppService, PrismaService],
   exports: [PrismaService],
