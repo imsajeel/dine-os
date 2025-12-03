@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="ui/logo/dine-os-light.png" alt="DineOS Logo" width="200" />
+</div>
+
 # DineOS
 
 DineOS is a comprehensive restaurant operating system designed to manage multiple branches, menus, orders, and reservations. It consists of a backend API, an admin dashboard, and a POS (Point of Sale) system.
