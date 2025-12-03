@@ -47,7 +47,13 @@ export class StatsService {
     });
 
     // Branch-wise breakdown (only for org admins without specific branch)
-    let branchStats = [];
+    let branchStats: Array<{
+      branchId: string;
+      branchName: string;
+      revenue: number;
+      orders: number;
+    }> = [];
+    
     if (user.role === 'org_admin' && !branchId) {
       const branches = await this.prisma.branches.findMany({
         where: { organization_id: orgId, is_active: true },
@@ -75,7 +81,7 @@ export class StatsService {
           return {
             branchId: branch.id,
             branchName: branch.name,
-            revenue: branchRevenue._sum.total_amount || 0,
+            revenue: Number(branchRevenue._sum.total_amount || 0),
             orders: branchOrders
           };
         })
@@ -87,6 +93,7 @@ export class StatsService {
       by: ['menu_item_id'],
       where: {
         organizations: { id: orgId },
+        menu_item_id: { not: null },
         ...(branchId && { orders: { branch_id: branchId } })
       },
       _sum: {
@@ -104,6 +111,8 @@ export class StatsService {
     // Fetch menu item details for top items
     const topItemsWithDetails = await Promise.all(
       topItems.map(async (item) => {
+        if (!item.menu_item_id) return null;
+        
         const menuItem = await this.prisma.menu_items.findUnique({
           where: { id: item.menu_item_id },
           select: { name: true, price: true }
@@ -111,18 +120,18 @@ export class StatsService {
         return {
           name: menuItem?.name || 'Unknown',
           quantity: item._sum.quantity || 0,
-          revenue: item._sum.price_at_time || 0
+          revenue: Number(item._sum.price_at_time || 0)
         };
       })
     );
 
     return {
       totalOrders,
-      revenue,
+      revenue: Number(revenue),
       activeTables,
       currency: org?.currency || 'GBP',
       branchStats,
-      topItems: topItemsWithDetails
+      topItems: topItemsWithDetails.filter(item => item !== null)
     };
   }
 }
