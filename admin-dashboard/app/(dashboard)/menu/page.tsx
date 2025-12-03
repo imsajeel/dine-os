@@ -134,120 +134,94 @@ export default function Menu() {
       <div className="flex justify-between items-center mb-6">
         <div>
             <h1 className="text-2xl font-bold text-slate-800">Menu Management</h1>
-            {isAdmin && activeTab === 'menu' && <div className="mt-2 w-64"><BranchSelector /></div>}
+            {isAdmin && <div className="mt-2 w-64"><BranchSelector /></div>}
         </div>
         
-        {/* Tabs */}
-        {isAdmin && (
-            <div className="flex bg-slate-100 p-1 rounded-lg">
-                <button 
-                    onClick={() => setActiveTab('menu')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'menu' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    Menu Items
-                </button>
-                <button 
-                    onClick={() => setActiveTab('branches')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'branches' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    Branches
-                </button>
-            </div>
-        )}
-
-        {activeTab === 'menu' && (
-            <div className="flex gap-3">
-                <button onClick={() => setIsCategoryModalOpen(true)} disabled={!selectedBranchId && isAdmin} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Plus weight="bold" /> Add Category
-                </button>
-                <button onClick={() => setIsItemModalOpen(true)} disabled={!selectedBranchId && isAdmin} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Plus weight="bold" /> Add Item
-                </button>
-            </div>
-        )}
+        <div className="flex gap-3">
+            <button onClick={() => setIsCategoryModalOpen(true)} disabled={!selectedBranchId && isAdmin} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <Plus weight="bold" /> Add Category
+            </button>
+            <button onClick={() => setIsItemModalOpen(true)} disabled={!selectedBranchId && isAdmin} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <Plus weight="bold" /> Add Item
+            </button>
+        </div>
       </div>
 
-      {activeTab === 'branches' ? (
-          <BranchesManager />
+      {isAdmin && !selectedBranchId ? (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+              <div className="bg-slate-100 p-6 rounded-full mb-4">
+                  <ForkKnife weight="duotone" className="text-4xl text-slate-400" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">Select a Branch</h2>
+              <p className="text-slate-500 max-w-sm">Please select a branch above to manage its menu items and categories.</p>
+          </div>
       ) : (
         <>
-          {isAdmin && !selectedBranchId ? (
-              <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-                  <div className="bg-slate-100 p-6 rounded-full mb-4">
-                      <ForkKnife weight="duotone" className="text-4xl text-slate-400" />
-                  </div>
-                  <h2 className="text-xl font-bold text-slate-800 mb-2">Select a Branch</h2>
-                  <p className="text-slate-500 max-w-sm">Please select a branch above to manage its menu items and categories.</p>
-              </div>
+          {categories.length === 0 && items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+                <div className="bg-slate-100 p-6 rounded-full mb-4">
+                    <ForkKnife weight="duotone" className="text-4xl text-slate-400" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-800 mb-2">No Menu Items Found</h2>
+                <p className="text-slate-500 max-w-sm mb-6">This branch has no menu items yet. You can add items manually or import from another branch.</p>
+                <div className="flex gap-3">
+                    <button onClick={() => setIsCategoryModalOpen(true)} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-50 transition-colors">
+                        Add Manually
+                    </button>
+                    <button onClick={() => setIsImportModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">
+                        Import from Branch
+                    </button>
+                </div>
+            </div>
           ) : (
             <>
-              {categories.length === 0 && items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-                    <div className="bg-slate-100 p-6 rounded-full mb-4">
-                        <ForkKnife weight="duotone" className="text-4xl text-slate-400" />
-                    </div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-2">No Menu Items Found</h2>
-                    <p className="text-slate-500 max-w-sm mb-6">This branch has no menu items yet. You can add items manually or import from another branch.</p>
-                    <div className="flex gap-3">
-                        <button onClick={() => setIsCategoryModalOpen(true)} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-50 transition-colors">
-                            Add Manually
-                        </button>
-                        <button onClick={() => setIsImportModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">
-                            Import from Branch
-                        </button>
-                    </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
+              <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
+                <button 
+                    onClick={() => setActiveCategory('all')}
+                    className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                >
+                    All Items
+                </button>
+                {categories.map((c: any) => (
                     <button 
-                        onClick={() => setActiveCategory('all')}
-                        className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                        key={c.id}
+                        onClick={() => setActiveCategory(c.id)}
+                        className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${activeCategory === c.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
                     >
-                        All Items
+                        {c.name}
                     </button>
-                    {categories.map((c: any) => (
-                        <button 
-                            key={c.id}
-                            onClick={() => setActiveCategory(c.id)}
-                            className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${activeCategory === c.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            {c.name}
-                        </button>
-                    ))}
-                  </div>
+                ))}
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredItems.map((item: any) => (
-                        <div key={item.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
-                            <div className="h-48 bg-slate-100 relative">
-                                {item.image_url ? (
-                                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                        <Image weight="duotone" className="text-4xl" />
-                                    </div>
-                                )}
-                                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow-sm">
-                                    ${Number(item.price).toFixed(2)}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredItems.map((item: any) => (
+                    <div key={item.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
+                        <div className="h-48 bg-slate-100 relative">
+                            {item.image_url ? (
+                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                    <Image weight="duotone" className="text-4xl" />
                                 </div>
+                            )}
+                            <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow-sm">
+                                ${Number(item.price).toFixed(2)}
                             </div>
-                            <div className="p-4">
-                                <h3 className="font-bold text-slate-800 mb-1">{item.name}</h3>
-                                <p className="text-slate-500 text-sm mb-3 line-clamp-2">{item.description || 'No description'}</p>
-                                <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-                                    <span className="text-xs font-bold text-slate-400 uppercase">{item.categories?.name}</span>
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Pencil weight="bold" /></button>
-                                        <button className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash weight="bold" /></button>
-                                    </div>
+                        </div>
+                        <div className="p-4">
+                            <h3 className="font-bold text-slate-800 mb-1">{item.name}</h3>
+                            <p className="text-slate-500 text-sm mb-3 line-clamp-2">{item.description || 'No description'}</p>
+                            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                                <span className="text-xs font-bold text-slate-400 uppercase">{item.categories?.name}</span>
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Pencil weight="bold" /></button>
+                                    <button className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash weight="bold" /></button>
                                 </div>
                             </div>
                         </div>
-                    ))}
-                  </div>
-                </>
-              )}
+                    </div>
+                ))}
+              </div>
             </>
           )}
         </>

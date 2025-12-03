@@ -42,11 +42,23 @@ export default function BranchesManager() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {branches.map((branch: any) => (
-            <div key={branch.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+            <div key={branch.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow group relative">
                 <h3 className="font-bold text-lg text-slate-800 mb-2">{branch.name}</h3>
                 <div className="text-xs text-slate-400 font-mono mb-2 bg-slate-50 p-1 rounded select-all cursor-pointer" title="Click to copy ID">{branch.id}</div>
                 <p className="text-slate-500 text-sm mb-1">{branch.address}</p>
                 <p className="text-slate-500 text-sm mb-4">{branch.phone}</p>
+                
+                <button 
+                    onClick={() => {
+                        localStorage.setItem('selected_branch_id', branch.id);
+                        window.dispatchEvent(new Event('branch-changed'));
+                        window.location.href = '/dashboard';
+                    }}
+                    className="w-full bg-slate-800 text-white py-2 rounded-lg font-bold hover:bg-slate-900 transition-colors mb-4"
+                >
+                    Manage Branch
+                </button>
+
                 <div className="flex gap-2 border-t pt-4">
                     <button className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"><Pencil weight="bold" /></button>
                     <button className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"><Trash weight="bold" /></button>

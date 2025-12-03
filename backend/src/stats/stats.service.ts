@@ -5,11 +5,19 @@ import { PrismaService } from '../prisma.service';
 export class StatsService {
   constructor(private prisma: PrismaService) {}
 
-  async getDashboardStats(orgId: string, branchId?: string) {
+  async getDashboardStats(user: any, branchId?: string) {
+    const orgId = user.organization_id;
     const where: any = { organization_id: orgId };
-    if (branchId) where.branch_id = branchId;
+    
+    // If branch manager, force branchId
+    if (user.role === 'branch_manager') {
+        where.branch_id = user.branch_id;
+    } else if (branchId) {
+        // If admin and branchId provided, filter by it
+        where.branch_id = branchId;
+    }
 
-    // Total Orders (maybe filter by date? for now all time)
+    // Total Orders
     const totalOrders = await this.prisma.orders.count({ where });
 
     // Revenue
@@ -19,13 +27,12 @@ export class StatsService {
       },
       where: {
         ...where,
-        status: { not: 'cancelled' }, // Exclude cancelled orders
+        status: { not: 'cancelled' },
       },
     });
     const revenue = revenueResult._sum.total_amount || 0;
 
     // Active Tables
-    // Tables are usually branch specific. If branchId is not provided, we sum up all active tables in org.
     const activeTables = await this.prisma.floor_tables.count({
       where: {
         ...where,
@@ -33,10 +40,17 @@ export class StatsService {
       },
     });
 
+    // Fetch Currency
+    const org = await this.prisma.organizations.findUnique({
+        where: { id: orgId },
+        select: { currency: true }
+    });
+
     return {
       totalOrders,
       revenue,
       activeTables,
+      currency: org?.currency || 'USD'
     };
   }
 }

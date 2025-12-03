@@ -10,7 +10,6 @@ export class StatsController {
   @Get('dashboard')
   async getDashboardStats(@Request() req, @Query('branchId') branchId?: string) {
     // req.user is populated by JwtStrategy
-    const orgId = req.user.orgId;
-    return this.statsService.getDashboardStats(orgId, branchId);
+    return this.statsService.getDashboardStats(req.user, branchId);
   }
 }
