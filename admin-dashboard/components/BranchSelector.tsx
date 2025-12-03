@@ -51,19 +51,19 @@ export default function BranchSelector({ onSelect }: { onSelect?: (branchId: str
     <div className="relative">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between bg-slate-800 p-3 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors border border-slate-700"
+        className="w-full flex items-center justify-between bg-white p-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors border border-slate-200 text-slate-700 shadow-sm"
       >
-        <span className="truncate">{currentBranch ? currentBranch.name : 'Select Branch'}</span>
+        <span className="truncate font-bold">{currentBranch ? currentBranch.name : 'Select Branch'}</span>
         <CaretDown weight="bold" className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 w-full mt-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50">
+        <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden z-50">
           {branches.map(branch => (
             <button
               key={branch.id}
               onClick={() => handleSelect(branch.id)}
-              className={`w-full text-left p-3 text-sm hover:bg-slate-700 transition-colors ${selectedBranch === branch.id ? 'bg-slate-700 text-blue-400' : 'text-slate-300'}`}
+              className={`w-full text-left p-3 text-sm hover:bg-slate-50 transition-colors ${selectedBranch === branch.id ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600'}`}
             >
               {branch.name}
             </button>
