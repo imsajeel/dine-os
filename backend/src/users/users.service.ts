@@ -12,12 +12,9 @@ export class UsersService {
       role: { not: 'org_admin' } // Exclude org admins from the list
     };
     
-    // If branchId is provided, include users assigned to that branch OR org-level users (branch_id is null)
+    // If branchId is provided, only show users from that specific branch
     if (branchId) {
-      where.OR = [
-        { branch_id: branchId },
-        { branch_id: null }
-      ];
+      where.branch_id = branchId;
     }
     
     return this.prisma.users.findMany({ 
