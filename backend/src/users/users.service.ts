@@ -35,12 +35,25 @@ export class UsersService {
   }
 
   async create(data: any) {
-    if (data.password) {
-      const salt = await bcrypt.genSalt();
-      data.password_hash = await bcrypt.hash(data.password, salt);
-      delete data.password;
+    console.log('Creating user with data:', JSON.stringify(data, null, 2));
+    
+    try {
+      if (data.password) {
+        const salt = await bcrypt.genSalt();
+        data.password_hash = await bcrypt.hash(data.password, salt);
+        delete data.password;
+      }
+      
+      console.log('Data after password hash:', JSON.stringify(data, null, 2));
+      
+      const user = await this.prisma.users.create({ data });
+      console.log('User created successfully:', user.id);
+      
+      return user;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
     }
-    return this.prisma.users.create({ data });
   }
 
   async update(id: string, data: any) {
