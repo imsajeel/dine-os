@@ -8,10 +8,19 @@ export class UsersService {
 
   async findAll(orgId: string, branchId?: string) {
     const where: any = { organization_id: orgId };
-    if (branchId) where.branch_id = branchId;
+    
+    // If branchId is provided, include users assigned to that branch OR org-level users (branch_id is null)
+    if (branchId) {
+      where.OR = [
+        { branch_id: branchId },
+        { branch_id: null }
+      ];
+    }
+    
     return this.prisma.users.findMany({ 
         where,
-        include: { branches: true }
+        include: { branches: true },
+        orderBy: { created_at: 'desc' }
     });
   }
 
