@@ -32,7 +32,7 @@ export default function Branches() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Branches</h1>
+        <h1 className="text-3xl font-extrabold text-slate-900">Branches</h1>
         <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700 transition-colors">
             <Plus weight="bold" /> Add Branch
         </button>

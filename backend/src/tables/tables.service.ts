@@ -109,7 +109,7 @@ export class TablesService {
     const newCapacity = Math.floor((table.capacity || 4) / splits);
     const suffixes = ['a', 'b', 'c', 'd', 'e', 'f'].slice(0, splits);
 
-    const createdTables = [];
+    const createdTables: any[] = [];
     for (const suffix of suffixes) {
       const newT = await this.prisma.floor_tables.create({
         data: {
