@@ -177,25 +177,36 @@ export default function Users() {
                         maxLength={4} 
                         placeholder="4-digit PIN"
                     />
-                    <button 
-                        type="button"
-                        onClick={async () => {
-                            const branchId = formData.branch_id || localStorage.getItem('selected_branch_id');
+                    {/* Determine branchId for PIN generation */}
+                    {(() => {
+                      const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
+                      const currentUser = storage.user || storage;
+                      const selectedBranchId = localStorage.getItem('selected_branch_id');
+                      const branchId = currentUser.role === 'branch_manager' ? currentUser.branch_id : (formData.branch_id || selectedBranchId);
+                      return (
+                        <button 
+                          type="button"
+                          disabled={!branchId}
+                          onClick={async () => {
                             if (!branchId) {
-                                alert('Please select a branch first to generate a unique PIN.');
-                                return;
+                              toast.error('Please select a branch first to generate a unique PIN.');
+                              return;
                             }
                             try {
-                                const res = await api.get(`/users/generate-pin?branchId=${branchId}`);
-                                setFormData(prev => ({ ...prev, pin_code: res.data.pin }));
+                              const res = await api.get(`/users/generate-pin?branchId=${branchId}`);
+                              setFormData(prev => ({ ...prev, pin_code: res.data.pin }));
+                              toast.success('PIN generated successfully!');
                             } catch (err) {
-                                console.error('Failed to generate PIN', err);
+                              console.error('Failed to generate PIN', err);
+                              toast.error('Failed to generate PIN');
                             }
-                        }}
-                        className="bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-bold hover:bg-slate-200 transition-colors whitespace-nowrap"
-                    >
-                        Generate
-                    </button>
+                          }}
+                          className="bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-bold hover:bg-slate-200 transition-colors whitespace-nowrap"
+                        >
+                          Generate
+                        </button>
+                      );
+                    })()}
                 </div>
 
 
