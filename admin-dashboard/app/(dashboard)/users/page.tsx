@@ -18,13 +18,24 @@ export default function Users() {
 
   useEffect(() => {
     fetchData();
+    window.addEventListener('branch-changed', fetchData);
+    return () => window.removeEventListener('branch-changed', fetchData);
   }, []);
 
   const fetchData = async () => {
-    const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const user = storage.user || storage;
+    const branchId = localStorage.getItem('selected_branch_id');
+
     if (user.organization_id) {
+        if (user.role === 'org_admin' && !branchId) {
+            setUsers([]);
+            return;
+        }
+
+        const query = branchId ? `&branchId=${branchId}` : '';
         const [usersRes, branchesRes] = await Promise.all([
-            api.get(`/users?orgId=${user.organization_id}`),
+            api.get(`/users?orgId=${user.organization_id}${query}`),
             api.get(`/branches?orgId=${user.organization_id}`)
         ]);
         setUsers(usersRes.data);
@@ -48,6 +59,23 @@ export default function Users() {
     setFormData({ full_name: '', email: '', password: '', role: 'staff', branch_id: '', pin_code: '' });
     fetchData();
   };
+
+  const selectedBranchId = typeof window !== 'undefined' ? localStorage.getItem('selected_branch_id') : null;
+  const storage = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('admin_user') || '{}') : {};
+  const user = storage.user || storage;
+  const isAdmin = user?.role === 'org_admin';
+
+  if (isAdmin && !selectedBranchId) {
+      return (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+              <div className="bg-slate-100 p-6 rounded-full mb-4">
+                  <User weight="duotone" className="text-4xl text-slate-400" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">Select a Branch</h2>
+              <p className="text-slate-500 max-w-sm">Please select a branch from the sidebar to manage users.</p>
+          </div>
+      );
+  }
 
   return (
     <div>

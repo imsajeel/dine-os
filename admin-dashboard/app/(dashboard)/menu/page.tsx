@@ -24,13 +24,31 @@ export default function Menu() {
 
   useEffect(() => {
     fetchData();
+    window.addEventListener('branch-changed', fetchData);
+    return () => window.removeEventListener('branch-changed', fetchData);
   }, []);
 
   const fetchData = async () => {
-    const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const user = storage.user || storage;
+    const branchId = localStorage.getItem('selected_branch_id');
+
     if (user.organization_id) {
+        // If admin and no branch selected, clear data
+        if (user.role === 'org_admin' && !branchId) {
+            setCategories([]);
+            setItems([]);
+            return;
+        }
+
+        // If admin, use selected branch. If staff, use their assigned branch (handled by backend usually or we pass it)
+        // Actually backend /menu/admin/:orgId returns all. We should filter or pass branchId to backend.
+        // Let's pass branchId query param if exists.
+        
+        const query = branchId ? `?branchId=${branchId}` : '';
+        
         const [menuRes, branchesRes] = await Promise.all([
-            api.get(`/menu/admin/${user.organization_id}`),
+            api.get(`/menu/admin/${user.organization_id}${query}`),
             api.get(`/branches?orgId=${user.organization_id}`)
         ]);
         setCategories(menuRes.data.categories);
@@ -69,6 +87,23 @@ export default function Menu() {
   const filteredItems = activeCategory === 'all' 
     ? items 
     : items.filter((i: any) => i.category_id === activeCategory);
+
+  const selectedBranchId = typeof window !== 'undefined' ? localStorage.getItem('selected_branch_id') : null;
+  const storage = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('admin_user') || '{}') : {};
+  const user = storage.user || storage;
+  const isAdmin = user?.role === 'org_admin';
+
+  if (isAdmin && !selectedBranchId) {
+      return (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+              <div className="bg-slate-100 p-6 rounded-full mb-4">
+                  <ForkKnife weight="duotone" className="text-4xl text-slate-400" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">Select a Branch</h2>
+              <p className="text-slate-500 max-w-sm">Please select a branch from the sidebar to manage its menu items and categories.</p>
+          </div>
+      );
+  }
 
   return (
     <div>
