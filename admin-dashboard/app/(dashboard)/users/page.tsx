@@ -62,11 +62,13 @@ export default function Users() {
     e.preventDefault();
     const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
     const user = storage.user || storage;
-    const branchId = localStorage.getItem('selected_branch_id');
     
     console.log('User object:', user);
     console.log('Organization ID:', user.organization_id);
     
+    // Determine branchId: branch manager uses own branch, otherwise use selected or form branch
+    const branchId = user.role === 'branch_manager' ? user.branch_id : (formData.branch_id || localStorage.getItem('selected_branch_id'));
+
     const payload = {
         full_name: formData.full_name,
         email: formData.email,
@@ -74,7 +76,7 @@ export default function Users() {
         role: formData.role,
         pin_code: formData.pin_code || null,
         organization_id: user.organization_id,
-        branch_id: branchId || user.branch_id || null
+        branch_id: branchId
     };
     
     console.log('Creating user with payload:', payload);
