@@ -1,13 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Storefront } from '@phosphor-icons/react';
 import api from '@/lib/api';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState({
     totalOrders: 0,
     revenue: 0,
     activeTables: 0,
-    currency: 'USD'
+    currency: 'GBP'
   });
   const [loading, setLoading] = useState(true);
   const [branchId, setBranchId] = useState<string | null>(null);
@@ -38,9 +41,20 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 className="text-3xl font-extrabold text-slate-900 mb-8">
-        {branchId ? 'Branch Dashboard' : 'Organization Dashboard'}
-      </h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-extrabold text-slate-900">
+          {branchId ? 'Branch Dashboard' : 'Organization Dashboard'}
+        </h1>
+        {!branchId && (
+          <button 
+            onClick={() => router.push('/branches')}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700 transition-colors"
+          >
+            <Storefront weight="bold" />
+            View Branches
+          </button>
+        )}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <h3 className="text-slate-500 font-bold mb-2">Total Orders</h3>
@@ -49,7 +63,7 @@ export default function Dashboard() {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <h3 className="text-slate-500 font-bold mb-2">Revenue</h3>
             <p className="text-3xl font-bold text-green-600">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: stats.currency || 'USD' }).format(Number(stats.revenue))}
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: stats.currency || 'GBP' }).format(Number(stats.revenue))}
             </p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">

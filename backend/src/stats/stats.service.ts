@@ -50,7 +50,7 @@ export class StatsService {
       totalOrders,
       revenue,
       activeTables,
-      currency: org?.currency || 'USD'
+      currency: org?.currency || 'GBP'
     };
   }
 }
