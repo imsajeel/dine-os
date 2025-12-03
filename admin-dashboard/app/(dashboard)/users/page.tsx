@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
-import { Plus, Trash, Pencil, User } from '@phosphor-icons/react';
+import { Plus, Trash, Pencil, UserCircle } from '@phosphor-icons/react';
+import toast from 'react-hot-toast';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -60,12 +61,14 @@ export default function Users() {
     
     try {
       await api.post('/users', payload);
+      toast.success('User created successfully!');
       setIsModalOpen(false);
       setFormData({ full_name: '', email: '', password: '', role: 'staff', branch_id: '', pin_code: '' });
       fetchData();
     } catch (error: any) {
       console.error('Failed to create user:', error);
-      alert(error.response?.data?.message || 'Failed to create user');
+      const errorMessage = error.response?.data?.message || 'Failed to create user. Please try again.';
+      toast.error(errorMessage);
     }
   };
 
@@ -78,7 +81,7 @@ export default function Users() {
       return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center">
               <div className="bg-slate-100 p-6 rounded-full mb-4">
-                  <User weight="duotone" className="text-4xl text-slate-400" />
+                  <UserCircle weight="duotone" className="text-4xl text-slate-400" />
               </div>
               <h2 className="text-xl font-bold text-slate-800 mb-2">Select a Branch</h2>
               <p className="text-slate-500 max-w-sm">Please select a branch from the sidebar to manage users.</p>
@@ -111,7 +114,7 @@ export default function Users() {
                     <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50">
                         <td className="p-4 flex items-center gap-3">
                             <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-                                <User weight="bold" />
+                                <UserCircle weight="bold" />
                             </div>
                             {u.full_name}
                         </td>

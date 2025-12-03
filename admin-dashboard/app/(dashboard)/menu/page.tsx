@@ -4,6 +4,7 @@ import api from '@/lib/api';
 import { Plus, Trash, Pencil, ForkKnife, Image } from '@phosphor-icons/react';
 import BranchSelector from '@/components/BranchSelector';
 import BranchesManager from '@/components/BranchesManager';
+import toast from 'react-hot-toast';
 
 export default function Menu() {
   const [categories, setCategories] = useState([]);
@@ -126,24 +127,31 @@ export default function Menu() {
     const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
     const branchId = localStorage.getItem('selected_branch_id');
     
-    if (editingCategory) {
-      await api.put(`/menu/category/${editingCategory.id}`, {
-        ...categoryForm,
-        organization_id: user.organization_id,
-        branch_id: branchId || user.branch_id || null
-      });
-    } else {
-      await api.post('/menu/category', {
-        ...categoryForm,
-        organization_id: user.organization_id,
-        branch_id: branchId || user.branch_id || null
-      });
+    try {
+      if (editingCategory) {
+        await api.put(`/menu/category/${editingCategory.id}`, {
+          ...categoryForm,
+          organization_id: user.organization_id,
+          branch_id: branchId || user.branch_id || null
+        });
+        toast.success('Category updated successfully!');
+      } else {
+        await api.post('/menu/category', {
+          ...categoryForm,
+          organization_id: user.organization_id,
+          branch_id: branchId || user.branch_id || null
+        });
+        toast.success('Category created successfully!');
+      }
+      
+      setIsCategoryModalOpen(false);
+      setCategoryForm({ name: '', branch_id: '' });
+      setEditingCategory(null);
+      fetchData();
+    } catch (error: any) {
+      console.error('Failed to save category:', error);
+      toast.error(error.response?.data?.message || 'Failed to save category');
     }
-    
-    setIsCategoryModalOpen(false);
-    setCategoryForm({ name: '', branch_id: '' });
-    setEditingCategory(null);
-    fetchData();
   };
 
   const handleSaveItem = async (e: React.FormEvent) => {
@@ -158,29 +166,48 @@ export default function Menu() {
       branch_id: branchId || user.branch_id || null
     };
 
-    if (editingItem) {
-      await api.put(`/menu/item/${editingItem.id}`, payload);
-    } else {
-      await api.post('/menu/item', payload);
+    try {
+      if (editingItem) {
+        await api.put(`/menu/item/${editingItem.id}`, payload);
+        toast.success('Menu item updated successfully!');
+      } else {
+        await api.post('/menu/item', payload);
+        toast.success('Menu item created successfully!');
+      }
+      
+      setIsItemModalOpen(false);
+      setItemForm({ name: '', price: '', description: '', category_id: '', branch_id: '', image_url: '' });
+      setEditingItem(null);
+      fetchData();
+    } catch (error: any) {
+      console.error('Failed to save item:', error);
+      toast.error(error.response?.data?.message || 'Failed to save menu item');
     }
-    
-    setIsItemModalOpen(false);
-    setItemForm({ name: '', price: '', description: '', category_id: '', branch_id: '', image_url: '' });
-    setEditingItem(null);
-    fetchData();
   };
 
   const handleDeleteCategory = async (id: string) => {
     if (confirm('Are you sure you want to delete this category? All items in this category will also be deleted.')) {
-      await api.delete(`/menu/category/${id}`);
-      fetchData();
+      try {
+        await api.delete(`/menu/category/${id}`);
+        toast.success('Category deleted successfully!');
+        fetchData();
+      } catch (error: any) {
+        console.error('Failed to delete category:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete category');
+      }
     }
   };
 
   const handleDeleteItem = async (id: string) => {
     if (confirm('Are you sure you want to delete this item?')) {
-      await api.delete(`/menu/item/${id}`);
-      fetchData();
+      try {
+        await api.delete(`/menu/item/${id}`);
+        toast.success('Menu item deleted successfully!');
+        fetchData();
+      } catch (error: any) {
+        console.error('Failed to delete item:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete menu item');
+      }
     }
   };
 
