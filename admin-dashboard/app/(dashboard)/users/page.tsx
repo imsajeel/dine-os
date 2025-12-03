@@ -27,9 +27,13 @@ export default function Users() {
     try {
       const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
       const user = storage.user || storage;
-      const branchId = localStorage.getItem('selected_branch_id');
+      const selectedBranchId = localStorage.getItem('selected_branch_id');
+      
+      // For branch managers, use their assigned branch_id
+      // For org admins, use the selected branch
+      const branchId = user.role === 'branch_manager' ? user.branch_id : selectedBranchId;
 
-      console.log('Fetching users for:', { orgId: user.organization_id, branchId, role: user.role });
+      console.log('Fetching users for:', { orgId: user.organization_id, branchId, role: user.role, userBranchId: user.branch_id });
 
       if (user.organization_id) {
           if (user.role === 'org_admin' && !branchId) {
@@ -38,8 +42,9 @@ export default function Users() {
           }
 
           const query = branchId ? `&branchId=${branchId}` : '';
+          const roleQuery = user.role ? `&userRole=${user.role}` : '';
           const [usersRes, branchesRes] = await Promise.all([
-              api.get(`/users?orgId=${user.organization_id}${query}`),
+              api.get(`/users?orgId=${user.organization_id}${query}${roleQuery}`),
               api.get(`/branches?orgId=${user.organization_id}`)
           ]);
           
@@ -93,6 +98,7 @@ export default function Users() {
   const storage = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('admin_user') || '{}') : {};
   const user = storage.user || storage;
   const isAdmin = user?.role === 'org_admin';
+  const isBranchManager = user?.role === 'branch_manager';
 
   if (isAdmin && !selectedBranchId) {
       return (
@@ -193,11 +199,15 @@ export default function Users() {
                 </div>
 
 
-                <label className="block text-sm font-bold text-slate-700 mb-1">Role</label>
-                <select className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500 bg-white" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                    <option value="staff">Staff</option>
-                    <option value="branch_manager">Branch Manager</option>
-                </select>
+                {!isBranchManager && (
+                  <>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Role</label>
+                    <select className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500 bg-white" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
+                        <option value="staff">Staff</option>
+                        <option value="branch_manager">Branch Manager</option>
+                    </select>
+                  </>
+                )}
 
                 <div className="flex justify-end gap-2">
                     <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>

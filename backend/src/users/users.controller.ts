@@ -8,8 +8,12 @@ export class UsersController {
   constructor(private service: UsersService) {}
 
   @Get()
-  findAll(@Query('orgId') orgId: string, @Query('branchId') branchId?: string) {
-    return this.service.findAll(orgId, branchId);
+  findAll(
+    @Query('orgId') orgId: string, 
+    @Query('branchId') branchId?: string,
+    @Query('userRole') userRole?: string
+  ) {
+    return this.service.findAll(orgId, branchId, userRole);
   }
 
   @Post()

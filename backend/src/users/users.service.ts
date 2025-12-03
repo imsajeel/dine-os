@@ -6,7 +6,9 @@ import * as bcrypt from 'bcrypt';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(orgId: string, branchId?: string) {
+  async findAll(orgId: string, branchId?: string, userRole?: string) {
+    console.log('findAll called with:', { orgId, branchId, userRole });
+    
     const where: any = { 
       organization_id: orgId,
       role: { not: 'org_admin' } // Exclude org admins from the list
@@ -17,11 +19,23 @@ export class UsersService {
       where.branch_id = branchId;
     }
     
-    return this.prisma.users.findMany({ 
+    // If the requesting user is a branch_manager, only show staff (not other managers)
+    if (userRole === 'branch_manager') {
+      where.role = 'staff';
+    }
+    
+    console.log('Query where clause:', JSON.stringify(where, null, 2));
+    
+    const users = await this.prisma.users.findMany({ 
         where,
         include: { branches: true },
         orderBy: { created_at: 'desc' }
     });
+    
+    console.log(`Found ${users.length} users`);
+    users.forEach(u => console.log(`- ${u.full_name} (${u.email}) - Branch: ${u.branch_id}, Role: ${u.role}`));
+    
+    return users;
   }
 
   async findByEmail(email: string) {
