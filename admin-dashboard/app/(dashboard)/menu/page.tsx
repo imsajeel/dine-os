@@ -124,20 +124,19 @@ export default function Menu() {
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const branchId = localStorage.getItem('selected_branch_id');
     
     if (editingCategory) {
-      // Update existing category
       await api.put(`/menu/category/${editingCategory.id}`, {
         ...categoryForm,
         organization_id: user.organization_id,
-        branch_id: categoryForm.branch_id || null
+        branch_id: branchId || user.branch_id || null
       });
     } else {
-      // Create new category
       await api.post('/menu/category', {
         ...categoryForm,
         organization_id: user.organization_id,
-        branch_id: categoryForm.branch_id || null
+        branch_id: branchId || user.branch_id || null
       });
     }
     
@@ -150,19 +149,18 @@ export default function Menu() {
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const branchId = localStorage.getItem('selected_branch_id');
     
     const payload = {
       ...itemForm,
       organization_id: user.organization_id,
       price: parseFloat(itemForm.price),
-      branch_id: itemForm.branch_id || null
+      branch_id: branchId || user.branch_id || null
     };
 
     if (editingItem) {
-      // Update existing item
       await api.put(`/menu/item/${editingItem.id}`, payload);
     } else {
-      // Create new item
       await api.post('/menu/item', payload);
     }
     
@@ -301,15 +299,7 @@ export default function Menu() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <form onSubmit={handleSaveCategory} className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
                 <h2 className="text-xl font-bold mb-4 text-slate-800">{editingCategory ? 'Edit Category' : 'Add Category'}</h2>
-                <input className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} required />
-                
-                <label className="block text-sm font-bold text-slate-700 mb-1">Branch (Optional)</label>
-                <select className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500 bg-white" value={categoryForm.branch_id} onChange={e => setCategoryForm({...categoryForm, branch_id: e.target.value})}>
-                    <option value="">All Branches</option>
-                    {branches.map((b: any) => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                </select>
+                <input className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500" placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} required />
 
                 <div className="flex justify-end gap-2">
                     <button type="button" onClick={() => setIsCategoryModalOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>
@@ -339,15 +329,7 @@ export default function Menu() {
 
                 <textarea className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500 h-24 resize-none" placeholder="Description" value={itemForm.description} onChange={e => setItemForm({...itemForm, description: e.target.value})} />
                 
-                <input className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" placeholder="Image URL" value={itemForm.image_url} onChange={e => setItemForm({...itemForm, image_url: e.target.value})} />
-
-                <label className="block text-sm font-bold text-slate-700 mb-1">Branch (Optional)</label>
-                <select className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500 bg-white" value={itemForm.branch_id} onChange={e => setItemForm({...itemForm, branch_id: e.target.value})}>
-                    <option value="">All Branches</option>
-                    {branches.map((b: any) => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                </select>
+                <input className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500" placeholder="Image URL" value={itemForm.image_url} onChange={e => setItemForm({...itemForm, image_url: e.target.value})} />
 
                 <div className="flex justify-end gap-2">
                     <button type="button" onClick={() => setIsItemModalOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>

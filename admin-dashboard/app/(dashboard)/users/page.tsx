@@ -46,12 +46,13 @@ export default function Users() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
-    // Hash password in real app
+    const branchId = localStorage.getItem('selected_branch_id');
+    
     const payload = {
         ...formData,
         organization_id: user.organization_id,
-        password_hash: formData.password, // Mock hash
-        branch_id: formData.branch_id || null
+        password_hash: formData.password,
+        branch_id: branchId || user.branch_id || null
     };
     
     await api.post('/users', payload);
@@ -163,19 +164,12 @@ export default function Users() {
                     </button>
                 </div>
 
+
                 <label className="block text-sm font-bold text-slate-700 mb-1">Role</label>
-                <select className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500 bg-white" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
+                <select className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500 bg-white" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
                     <option value="staff">Staff</option>
                     <option value="branch_manager">Branch Manager</option>
                     <option value="org_admin">Org Admin</option>
-                </select>
-
-                <label className="block text-sm font-bold text-slate-700 mb-1">Branch</label>
-                <select className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500 bg-white" value={formData.branch_id} onChange={e => setFormData({...formData, branch_id: e.target.value})}>
-                    <option value="">All Branches (Org Level)</option>
-                    {branches.map((b: any) => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
                 </select>
 
                 <div className="flex justify-end gap-2">
