@@ -1,5 +1,9 @@
 <div align="center">
-  <img src="ui/logo/dine-os-light.png" alt="DineOS Logo" width="200" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="ui/logo/dine-os-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="ui/logo/dine-os-light.png">
+    <img alt="DineOS Logo" src="ui/logo/dine-os-light.png" width="200">
+  </picture>
 </div>
 
 # DineOS
