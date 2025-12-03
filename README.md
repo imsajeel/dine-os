@@ -25,6 +25,29 @@ DineOS is a comprehensive restaurant operating system designed to manage multipl
 - **"Per Kg" Pricing**: Special support for weight-based items (e.g., fresh fish) with dynamic pricing calculations.
 - **Staff Management**: Role-based access control for admins, managers, and staff.
 
+## Design Logic
+
+### 1. Data Scoping & Multi-Tenancy
+DineOS uses a hierarchical data scoping strategy:
+- **Organization Level**: The top-level entity. All data (Menus, Users, Tables) belongs to an Organization.
+- **Branch Level**: A subset of the Organization. Orders and Tables are strictly scoped to a Branch.
+- **Menu Overrides**: Menus can be defined globally (Organization level) or overridden per Branch. The system prioritizes Branch-specific items over Global items during retrieval.
+
+### 2. "Per Kg" Pricing Architecture
+For items sold by weight (e.g., fresh seafood, steaks), DineOS implements a specific pricing logic:
+- **Modifier Group Type**: A special `grams` type modifier group is used.
+- **Rate Definition**: The base price of the Menu Item acts as the **Rate per Kg**.
+- **Calculation**: `Price = (Input Weight in Grams / 1000) * Item Base Price`.
+- **UI Handling**: The POS detects the `grams` type and renders a weight input field instead of standard selection options.
+
+### 3. Real-time Event Architecture
+To ensure instant synchronization across multiple POS terminals and the Kitchen Display System (KDS):
+- **WebSockets (Socket.IO)**: Used for bi-directional communication.
+- **Event Flow**:
+    1.  **Action**: POS creates an order.
+    2.  **Emit**: Backend processes order and emits `order_created` event to the specific Organization room.
+    3.  **Update**: All connected clients (other POS, Admin Dashboard) listen for the event and refetch relevant data immediately, eliminating the need for polling.
+
 ## Getting Started
 
 ### Prerequisites
