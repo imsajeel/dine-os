@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Logo from './Logo';
-import BranchSelector from './BranchSelector';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -34,7 +33,6 @@ export default function Sidebar() {
     <aside className="w-64 bg-slate-900 text-white h-screen flex flex-col p-4 fixed left-0 top-0">
       <div className="mb-6 px-4">
         <Logo className="h-8 w-auto text-white mb-6" />
-        {isAdmin && <BranchSelector />}
       </div>
       
       <nav className="flex-1 space-y-2">
