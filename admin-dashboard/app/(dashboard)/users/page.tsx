@@ -68,14 +68,18 @@ export default function Users() {
         branch_id: branchId || user.branch_id || null
     };
     
+    console.log('Creating user with payload:', payload);
+    
     try {
-      await api.post('/users', payload);
+      const response = await api.post('/users', payload);
+      console.log('User creation response:', response.data);
       toast.success('User created successfully!');
       setIsModalOpen(false);
       setFormData({ full_name: '', email: '', password: '', role: 'staff', branch_id: '', pin_code: '' });
       fetchData();
     } catch (error: any) {
       console.error('Failed to create user:', error);
+      console.error('Error response:', error.response?.data);
       const errorMessage = error.response?.data?.message || 'Failed to create user. Please try again.';
       toast.error(errorMessage);
     }

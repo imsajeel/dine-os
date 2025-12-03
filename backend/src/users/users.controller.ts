@@ -14,6 +14,7 @@ export class UsersController {
 
   @Post()
   create(@Body() body: any) {
+    console.log('POST /users endpoint called with body:', JSON.stringify(body, null, 2));
     return this.service.create(body);
   }
 
