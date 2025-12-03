@@ -49,16 +49,24 @@ export default function Users() {
     const branchId = localStorage.getItem('selected_branch_id');
     
     const payload = {
-        ...formData,
+        full_name: formData.full_name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        pin_code: formData.pin_code || null,
         organization_id: user.organization_id,
-        password_hash: formData.password,
         branch_id: branchId || user.branch_id || null
     };
     
-    await api.post('/users', payload);
-    setIsModalOpen(false);
-    setFormData({ full_name: '', email: '', password: '', role: 'staff', branch_id: '', pin_code: '' });
-    fetchData();
+    try {
+      await api.post('/users', payload);
+      setIsModalOpen(false);
+      setFormData({ full_name: '', email: '', password: '', role: 'staff', branch_id: '', pin_code: '' });
+      fetchData();
+    } catch (error: any) {
+      console.error('Failed to create user:', error);
+      alert(error.response?.data?.message || 'Failed to create user');
+    }
   };
 
   const selectedBranchId = typeof window !== 'undefined' ? localStorage.getItem('selected_branch_id') : null;
