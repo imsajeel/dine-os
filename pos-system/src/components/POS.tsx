@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import {
   ForkKnife,
   BeerBottle,
@@ -107,7 +108,6 @@ export default function POS() {
         // Fetch Menu
         const menuRes = await fetch(`http://localhost:3001/menu/${orgId}${queryParams}`);
         const menuData = await menuRes.json();
-        console.log('Menu Data:', menuData); // Debug log
 
         // Fetch Tables
         const tablesRes = await fetch(`http://localhost:3001/tables/${orgId}${queryParams}`);
@@ -159,8 +159,7 @@ export default function POS() {
           modifier_groups: i.modifier_groups || [],
         }));
         
-        console.log('Mapped Items:', mappedItems); // Debug log
-
+        
         setCategories(mappedCategories);
         setMenuItems(mappedItems);
       } catch (error) {
@@ -189,11 +188,41 @@ export default function POS() {
   }, [fetchData]);
 
   // Poll for updates every 10 seconds
+  // WebSocket connection
   useEffect(() => {
-    const interval = setInterval(() => {
+    const socket = io('http://localhost:3001');
+
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket');
+    });
+
+    socket.on('order_created', (data) => {
+      console.log('Order created event:', data);
+      fetchTakeawayOrders();
+      // Optionally refetch tables if dine-in
+      if (data.table_id) fetchData();
+    });
+
+    socket.on('order_updated', (data) => {
+      console.log('Order updated event:', data);
+      fetchTakeawayOrders();
+      // Optionally refetch tables if dine-in
+      if (data.table_id) fetchData();
+    });
+
+    socket.on('menu_updated', () => {
+      console.log('Menu updated event');
       fetchData();
-    }, 2000);
-    return () => clearInterval(interval);
+    });
+
+    socket.on('tables_updated', () => {
+        console.log('Tables updated event');
+        fetchData();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [fetchData]);
 
 
@@ -212,8 +241,22 @@ export default function POS() {
   });
 
   const subtotal = cart.reduce((sum, item) => {
-    const modifiersPrice = item.selectedModifiers?.reduce((acc, mod) => acc + mod.price, 0) || 0;
-    return sum + ((item.price + modifiersPrice) * item.quantity);
+    // Check if item has a weight modifier
+    const weightMod = item.selectedModifiers?.find(m => m.weight);
+    
+    let itemBasePrice = item.price;
+    if (weightMod && weightMod.weight) {
+        // If weight exists, item price is calculated based on weight and ITEM price (rate per kg)
+        itemBasePrice = (weightMod.weight / 1000) * item.price;
+    }
+
+    // Add other modifiers (excluding the weight modifier itself, as its "price" is irrelevant now)
+    const otherModifiersPrice = item.selectedModifiers?.reduce((acc, mod) => {
+        if (mod.weight) return acc; // Skip weight modifier
+        return acc + mod.price;
+    }, 0) || 0;
+
+    return sum + ((itemBasePrice + otherModifiersPrice) * item.quantity);
   }, 0);
   const tax = subtotal * 0.1; // 10% Tax
   const total = subtotal + tax;
@@ -265,14 +308,7 @@ export default function POS() {
   };
 
   const handleItemClick = (item: MenuItem) => {
-    console.log('Item clicked:', item); // Debug log
-    if (orderType === 'dine-in' && !selectedTable) {
-      setIsTableModalOpen(true);
-      return;
-    }
-
     if (item.modifier_groups && item.modifier_groups.length > 0) {
-      console.log('Opening modifier modal for:', item.name); // Debug log
       setSelectedItemForModifiers(item);
       setSelectedModifiers([]);
       setModifierNote('');
@@ -362,7 +398,9 @@ export default function POS() {
     const orgId = localStorage.getItem('dineos_org_id');
     if (!orgId) return;
     try {
-      const res = await fetch(`http://localhost:3001/orders?organization_id=${orgId}&status=active&type=takeaway`);
+      const settings = JSON.parse(localStorage.getItem('dineos_settings') || '{}');
+      const branchId = settings.branchId;
+      const res = await fetch(`http://localhost:3001/orders?organization_id=${orgId}&status=active&type=takeaway${branchId ? `&branch_id=${branchId}` : ''}`);
       const data = await res.json();
       setTakeawayOrders(data);
     } catch (e) {
@@ -373,8 +411,7 @@ export default function POS() {
   useEffect(() => {
     if (currentView === 'takeaway') {
       fetchTakeawayOrders();
-      const interval = setInterval(fetchTakeawayOrders, 2000); // Poll every 2s
-      return () => clearInterval(interval);
+      // Polling removed in favor of WebSockets
     }
   }, [currentView]);
 
@@ -385,8 +422,11 @@ export default function POS() {
         return;
     }
     
+    const settings = JSON.parse(localStorage.getItem('dineos_settings') || '{}');
+    
     const orderData = {
       organization_id: localStorage.getItem('dineos_org_id'),
+      branch_id: settings.branchId,
       items: newItems.map(item => ({
         menu_item_id: item.id,
         quantity: item.quantity,
@@ -977,38 +1017,85 @@ export default function POS() {
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="font-bold text-slate-700 text-lg">{group.name}</h4>
                                 <span className="text-xs font-medium px-2 py-1 bg-slate-100 text-slate-500 rounded-lg">
-                                    {group.min_selection === 1 && group.max_selection === 1 ? 'Required • Select 1' : 
+                                    {group.type === 'grams' ? 'Enter Weight (g)' : 
+                                     group.min_selection === 1 && group.max_selection === 1 ? 'Required • Select 1' : 
                                      `Select ${group.min_selection} - ${group.max_selection}`}
                                 </span>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {group.modifiers.map(mod => {
-                                    const isSelected = selectedModifiers.some(m => m.id === mod.id);
-                                    return (
-                                        <button
-                                            key={mod.id}
-                                            onClick={() => toggleModifier(mod, group)}
-                                            className={`
-                                                flex items-center justify-between p-4 rounded-xl border-2 transition-all
-                                                ${isSelected 
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                                                    : 'border-slate-100 hover:border-blue-200 hover:bg-slate-50 text-slate-600'}
-                                            `}
-                                        >
-                                            <span className="font-medium">{mod.name}</span>
-                                            <div className="flex items-center gap-2">
-                                                {mod.price > 0 && <span className="text-sm opacity-70">+£{mod.price.toFixed(2)}</span>}
-                                                <div className={`
-                                                    w-5 h-5 rounded-full border-2 flex items-center justify-center
-                                                    ${isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-300'}
-                                                `}>
-                                                    {isSelected && <Check weight="bold" className="text-xs" />}
+                            
+                            {group.type === 'grams' ? (
+                                <div className="grid grid-cols-1 gap-3">
+                                    {group.modifiers.map(mod => {
+                                        const selectedMod = selectedModifiers.find(m => m.id === mod.id);
+                                        const weight = selectedMod?.weight || '';
+                                        
+                                        return (
+                                            <div key={mod.id} className="p-4 rounded-xl border-2 border-slate-100 bg-slate-50">
+                                                <div className="flex justify-between mb-2">
+                                                    <span className="font-medium text-slate-700">{mod.name}</span>
+                                                    <span className="text-slate-500 text-sm">£{selectedItemForModifiers.price.toFixed(2)} / kg</span>
                                                 </div>
+                                                <div className="flex items-center gap-2">
+                                                    <input 
+                                                        type="number" 
+                                                        placeholder="Weight in grams"
+                                                        className="flex-1 p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                                                        value={weight}
+                                                        onChange={(e) => {
+                                                            const val = parseFloat(e.target.value);
+                                                            if (!isNaN(val)) {
+                                                                // Update or add modifier with weight
+                                                                setSelectedModifiers(prev => {
+                                                                    const others = prev.filter(m => m.id !== mod.id);
+                                                                    return [...others, { ...mod, weight: val }];
+                                                                });
+                                                            } else {
+                                                                // Remove if empty/invalid
+                                                                setSelectedModifiers(prev => prev.filter(m => m.id !== mod.id));
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="text-slate-500 font-medium">g</span>
+                                                </div>
+                                                {weight && (
+                                                    <div className="mt-2 text-right text-blue-600 font-bold text-sm">
+                                                        £{((Number(weight) / 1000) * selectedItemForModifiers.price).toFixed(2)}
+                                                    </div>
+                                                )}
                                             </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {group.modifiers.map(mod => {
+                                        const isSelected = selectedModifiers.some(m => m.id === mod.id);
+                                        return (
+                                            <button
+                                                key={mod.id}
+                                                onClick={() => toggleModifier(mod, group)}
+                                                className={`
+                                                    flex items-center justify-between p-4 rounded-xl border-2 transition-all
+                                                    ${isSelected 
+                                                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                                                        : 'border-slate-100 hover:border-blue-200 hover:bg-slate-50 text-slate-600'}
+                                                `}
+                                            >
+                                                <span className="font-medium">{mod.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    {mod.price > 0 && <span className="text-sm opacity-70">+£{mod.price.toFixed(2)}</span>}
+                                                    <div className={`
+                                                        w-5 h-5 rounded-full border-2 flex items-center justify-center
+                                                        ${isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-300'}
+                                                    `}>
+                                                        {isSelected && <Check weight="bold" className="text-xs" />}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>

@@ -7,12 +7,27 @@ import toast from 'react-hot-toast';
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const handleEdit = (user: any) => {
+    setEditingUserId(user.id);
+    setFormData({
+      full_name: user.full_name,
+      email: user.email,
+      password: '',
+      role: user.role,
+      branch_id: user.branches?.id || '',
+      pin_code: user.pin_code || ''
+    });
+    setIsModalOpen(true);
+  };
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ 
-    full_name: '', 
-    email: '', 
-    password: '', 
-    role: 'staff', 
+  const [formData, setFormData] = useState({
+    full_name: '',
+    email: '',
+    password: '',
+    role: 'staff',
     branch_id: '',
     pin_code: ''
   });
@@ -58,13 +73,30 @@ export default function Users() {
     }
   };
 
+  const handleDelete = (id: string) => {
+    setDeleteUserId(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteUserId) return;
+    try {
+      await api.delete(`/users/${deleteUserId}`);
+      toast.success('User deleted successfully');
+      fetchData();
+    } catch (error: any) {
+      console.error('Failed to delete user', error);
+      toast.error(error.response?.data?.message || 'Failed to delete user');
+    } finally {
+      setShowDeleteModal(false);
+      setDeleteUserId(null);
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
     const user = storage.user || storage;
-    
-    console.log('User object:', user);
-    console.log('Organization ID:', user.organization_id);
     
     // Determine branchId: branch manager uses own branch, otherwise use selected or form branch
     const branchId = user.role === 'branch_manager' ? user.branch_id : (formData.branch_id || localStorage.getItem('selected_branch_id'));
@@ -79,19 +111,21 @@ export default function Users() {
         branch_id: branchId
     };
     
-    console.log('Creating user with payload:', payload);
-    
     try {
-      const response = await api.post('/users', payload);
-      console.log('User creation response:', response.data);
-      toast.success('User created successfully!');
+      if (editingUserId) {
+        await api.put(`/users/${editingUserId}`, payload);
+        toast.success('User updated successfully!');
+      } else {
+        await api.post('/users', payload);
+        toast.success('User created successfully!');
+      }
       setIsModalOpen(false);
       setFormData({ full_name: '', email: '', password: '', role: 'staff', branch_id: '', pin_code: '' });
+      setEditingUserId(null);
       fetchData();
     } catch (error: any) {
-      console.error('Failed to create user:', error);
-      console.error('Error response:', error.response?.data);
-      const errorMessage = error.response?.data?.message || 'Failed to create user. Please try again.';
+      console.error('Failed to save user:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to save user. Please try again.';
       toast.error(errorMessage);
     }
   };
@@ -118,7 +152,11 @@ export default function Users() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Users</h1>
-        <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700 transition-colors">
+        <button onClick={() => {
+            setEditingUserId(null);
+            setFormData({ full_name: '', email: '', password: '', role: 'staff', branch_id: '', pin_code: '' });
+            setIsModalOpen(true);
+        }} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700 transition-colors">
             <Plus weight="bold" /> Add User
         </button>
       </div>
@@ -147,8 +185,8 @@ export default function Users() {
                         <td className="p-4"><span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold uppercase">{u.role}</span></td>
                         <td className="p-4 text-slate-600">{u.branches?.name || 'All Branches'}</td>
                         <td className="p-4 text-right">
-                            <button className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"><Pencil weight="bold" /></button>
-                            <button className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"><Trash weight="bold" /></button>
+                            <button className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors" onClick={() => handleEdit(u)}><Pencil weight="bold" /></button>
+                            <button className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors" onClick={() => handleDelete(u.id)}><Trash weight="bold" /></button>
                         </td>
                     </tr>
                 ))}
@@ -159,7 +197,7 @@ export default function Users() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <form onSubmit={handleCreate} className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-                <h2 className="text-xl font-bold mb-4 text-slate-800">Add User</h2>
+                <h2 className="text-xl font-bold mb-4 text-slate-800">{editingUserId ? 'Edit User' : 'Add User'}</h2>
                 
                 <label className="block text-sm font-bold text-slate-700 mb-1">Full Name</label>
                 <input className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} required />
@@ -167,8 +205,8 @@ export default function Users() {
                 <label className="block text-sm font-bold text-slate-700 mb-1">Email</label>
                 <input type="email" className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
                 
-                <label className="block text-sm font-bold text-slate-700 mb-1">Password</label>
-                <input type="password" className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Password {editingUserId && '(Leave blank to keep current)'}</label>
+                <input type="password" className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required={!editingUserId} />
 
                 <label className="block text-sm font-bold text-slate-700 mb-1">PIN Code (for POS)</label>
                 <div className="flex gap-2 mb-3">
@@ -223,10 +261,32 @@ export default function Users() {
                 )}
 
                 <div className="flex justify-end gap-2">
-                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>
+                    <button type="button" onClick={() => { setIsModalOpen(false); setEditingUserId(null); }} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>
                     <button className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">Save</button>
                 </div>
             </form>
+        </div>
+      )}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full">
+            <h2 className="text-xl font-bold mb-4">Confirm Deletion</h2>
+            <p className="mb-6">Are you sure you want to delete this user?</p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                onClick={() => setShowDeleteModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                onClick={confirmDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

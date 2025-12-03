@@ -106,8 +106,15 @@ export const Cart: React.FC<CartProps> = ({
                           <div className="text-xs text-slate-500 mt-1 space-y-0.5">
                               {item.selectedModifiers.map((mod, idx) => (
                                   <div key={idx} className="flex justify-between">
-                                      <span>+ {mod.name}</span>
-                                      {mod.price > 0 && <span>£{mod.price.toFixed(2)}</span>}
+                                      <span>
+                                        + {mod.name} 
+                                        {mod.weight && <span className="text-slate-400 ml-1">({mod.weight}g)</span>}
+                                      </span>
+                                      {mod.weight ? (
+                                        <span></span> // Hide price for weight modifier as it's included in item price
+                                      ) : (
+                                        mod.price > 0 && <span>£{mod.price.toFixed(2)}</span>
+                                      )}
                                   </div>
                               ))}
                           </div>
@@ -117,14 +124,29 @@ export const Cart: React.FC<CartProps> = ({
                                 &quot;{item.notes}&quot;
                             </div>
                         )}
-                        <p className="text-blue-600 font-semibold text-sm mt-1">£{((item.price + (item.selectedModifiers?.reduce((a, b) => a + b.price, 0) || 0)) * item.quantity).toFixed(2)}</p>
+                        <p className="text-blue-600 font-semibold text-sm mt-1">
+                            £{(() => {
+                                // Calculate total price for this item
+                                const weightMod = item.selectedModifiers?.find(m => m.weight);
+                                let itemBasePrice = item.price;
+                                if (weightMod && weightMod.weight) {
+                                    itemBasePrice = (weightMod.weight / 1000) * item.price;
+                                }
+                                const otherModifiersPrice = item.selectedModifiers?.reduce((acc, mod) => {
+                                    if (mod.weight) return acc;
+                                    return acc + mod.price;
+                                }, 0) || 0;
+                                return ((itemBasePrice + otherModifiersPrice) * item.quantity).toFixed(2);
+                            })()}
+                        </p>
                       </div>
                       <div className="flex flex-col items-end gap-2">
                           {!item.isExisting ? (
                               <>
                                 <div className="flex items-center gap-2 bg-slate-50 rounded-lg p-1">
                                 <button 
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         if (item.quantity <= 1) {
                                             removeFromCart(item.id, item.selectedModifiers, item.notes);
                                         } else {
@@ -137,14 +159,20 @@ export const Cart: React.FC<CartProps> = ({
                                 </button>
                                 <span className="text-sm font-semibold w-4 text-center">{item.quantity}</span>
                                 <button 
-                                    onClick={() => updateQuantity(item.id, 1, item.selectedModifiers, item.notes)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateQuantity(item.id, 1, item.selectedModifiers, item.notes);
+                                    }}
                                     className="w-6 h-6 flex items-center justify-center rounded-md bg-white text-blue-600 shadow-sm hover:bg-slate-100 active:scale-95 transition-all"
                                 >
                                     <Plus weight="bold" className="text-xs" />
                                 </button>
                                 </div>
                                 <button 
-                                    onClick={() => removeFromCart(item.id, item.selectedModifiers, item.notes)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeFromCart(item.id, item.selectedModifiers, item.notes);
+                                    }}
                                     className="p-1 text-slate-400 hover:text-red-500 transition-colors"
                                 >
                                     <Trash weight="bold" className="text-lg" />

@@ -1,5 +1,5 @@
 'use client';
-import { House, Storefront, Users, ForkKnife, SignOut } from '@phosphor-icons/react';
+import { House, Storefront, Users, ForkKnife, SignOut, List } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -88,6 +88,10 @@ export default function Sidebar() {
             <>
                 <Link href="/menu" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/menu' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                     <ForkKnife weight="bold" className="text-xl" /> Menu
+                </Link>
+
+                <Link href="/modifiers" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/modifiers' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                    <List weight="bold" className="text-xl" /> Modifiers
                 </Link>
 
                 <Link href="/users" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/users' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>

@@ -1,5 +1,6 @@
 export class CreateOrderDto {
   organization_id: string;
+  branch_id?: string;
   items: {
     menu_item_id: string;
     quantity: number;

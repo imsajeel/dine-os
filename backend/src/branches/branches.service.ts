@@ -12,7 +12,30 @@ export class BranchesService {
     });
   }
 
+  async getConfig(orgId: string) {
+    const org = await this.prisma.organizations.findUnique({
+        where: { id: orgId },
+        select: { max_branches: true }
+    });
+    const count = await this.prisma.branches.count({
+        where: { organization_id: orgId }
+    });
+    return { max_branches: org?.max_branches || 1, count };
+  }
+
   async create(data: any) {
+    const org = await this.prisma.organizations.findUnique({
+        where: { id: data.organization_id }
+    });
+
+    const currentBranches = await this.prisma.branches.count({
+        where: { organization_id: data.organization_id }
+    });
+
+    if (org?.max_branches && currentBranches >= org.max_branches) {
+        throw new Error(`Branch limit reached. Your plan allows ${org.max_branches} branches.`);
+    }
+
     return this.prisma.branches.create({ data });
   }
 

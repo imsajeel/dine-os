@@ -13,8 +13,8 @@ export class OrdersController {
   }
 
   @Get()
-  findAll(@Query('organization_id') orgId: string, @Query('status') status?: string, @Query('type') type?: string) {
-    return this.ordersService.findAll(orgId, status, type);
+  findAll(@Query('organization_id') orgId: string, @Query('status') status?: string, @Query('type') type?: string, @Query('branch_id') branchId?: string) {
+    return this.ordersService.findAll(orgId, status, type, branchId);
   }
 
   @Get(':id')

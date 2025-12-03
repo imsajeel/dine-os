@@ -81,7 +81,7 @@ export class StatsService {
           return {
             branchId: branch.id,
             branchName: branch.name,
-            revenue: Number(branchRevenue._sum.total_amount || 0),
+            revenue: Number(branchRevenue._sum.total_amount?.toString() || 0),
             orders: branchOrders
           };
         })
@@ -92,9 +92,9 @@ export class StatsService {
     const topItems = await this.prisma.order_items.groupBy({
       by: ['menu_item_id'],
       where: {
-        organizations: { id: orgId },
+        organization_id: orgId,
         menu_item_id: { not: null },
-        ...(branchId && { orders: { branch_id: branchId } })
+        ...(branchId ? { orders: { branch_id: branchId } } : {})
       },
       _sum: {
         quantity: true,
@@ -120,14 +120,14 @@ export class StatsService {
         return {
           name: menuItem?.name || 'Unknown',
           quantity: item._sum.quantity || 0,
-          revenue: Number(item._sum.price_at_time || 0)
+          revenue: Number(item._sum.price_at_time?.toString() || 0)
         };
       })
     );
 
     return {
       totalOrders,
-      revenue: Number(revenue),
+      revenue: Number(revenue?.toString() || 0),
       activeTables,
       currency: org?.currency || 'GBP',
       branchStats,

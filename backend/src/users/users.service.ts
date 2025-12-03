@@ -71,8 +71,8 @@ export class UsersService {
     if (data.password) {
       const salt = await bcrypt.genSalt();
       data.password_hash = await bcrypt.hash(data.password, salt);
-      delete data.password;
     }
+    delete data.password;
     return this.prisma.users.update({ where: { id }, data });
   }
 

@@ -10,11 +10,13 @@ export type Modifier = {
   id: string;
   name: string;
   price: number;
+  weight?: number; // For 'grams' type
 };
 
 export type ModifierGroup = {
   id: string;
   name: string;
+  type?: 'selection' | 'text' | 'grams';
   min_selection: number;
   max_selection: number;
   modifiers: Modifier[];

@@ -3,12 +3,17 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma.service';
 
+import { EventsGateway } from '../events/events.gateway';
+
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventsGateway: EventsGateway
+  ) {}
 
   async create(createOrderDto: CreateOrderDto) {
-    const { organization_id, items, type, table_id } = createOrderDto;
+    const { organization_id, branch_id, items, type, table_id } = createOrderDto;
 
     // 1. Fetch all menu items to get prices
     const itemIds = items.map(i => i.menu_item_id);
@@ -76,16 +81,19 @@ export class OrdersService {
         });
         
         // Handle BigInt serialization
-        return {
+        const result = {
             ...updatedOrder,
             id: updatedOrder.id.toString(),
             total_amount: Number(updatedOrder.total_amount)
         };
+        this.eventsGateway.emitOrderUpdated(result);
+        return result;
     } else {
         // Create New Order
         const order = await this.prisma.orders.create({
           data: {
             organization_id,
+            branch_id: branch_id || null,
             table_id: table_id || null,
             status: 'new',
             total_amount: totalAmount,
@@ -105,16 +113,22 @@ export class OrdersService {
         }
         
         // Handle BigInt serialization
-        return {
+        const result = {
             ...order,
             id: order.id.toString(),
             total_amount: Number(order.total_amount)
         };
+        this.eventsGateway.emitOrderCreated(result);
+        return result;
     }
   }
 
-  async findAll(orgId: string, status?: string, type?: string) {
+  async findAll(orgId: string, status?: string, type?: string, branchId?: string) {
     const where: any = { organization_id: orgId };
+    
+    if (branchId) {
+        where.branch_id = branchId;
+    }
     
     if (status) {
       if (status === 'active') {
@@ -174,11 +188,13 @@ export class OrdersService {
     }
     
     // Convert BigInt to string for JSON serialization
-    return {
+    const result = {
       ...order,
       id: order.id.toString(),
       total_amount: Number(order.total_amount)
     };
+    this.eventsGateway.emitOrderUpdated(result);
+    return result;
   }
 
   remove(id: number) {

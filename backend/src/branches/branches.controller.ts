@@ -12,6 +12,11 @@ export class BranchesController {
     return this.service.findAll(orgId);
   }
 
+  @Get('config/:orgId')
+  getConfig(@Param('orgId') orgId: string) {
+    return this.service.getConfig(orgId);
+  }
+
   @Post()
   create(@Body() body: any) {
     return this.service.create(body);

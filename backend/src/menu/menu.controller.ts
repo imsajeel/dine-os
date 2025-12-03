@@ -49,4 +49,9 @@ export class MenuController {
   copyMenu(@Body() body: { sourceBranchId: string, targetBranchId: string, mode: 'all' | 'category', categoryId?: string }) {
     return this.menuService.copyMenu(body.sourceBranchId, body.targetBranchId, body);
   }
+
+  @Post('merge')
+  mergeCategories(@Body() body: { branchId: string }) {
+    return this.menuService.mergeCategories(body.branchId);
+  }
 }

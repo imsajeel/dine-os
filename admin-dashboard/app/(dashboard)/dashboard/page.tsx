@@ -4,9 +4,19 @@ import { useRouter } from 'next/navigation';
 import { Storefront, TrendUp, ShoppingCart, Table } from '@phosphor-icons/react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '@/lib/api';
+import BranchesManager from '@/components/BranchesManager';
 
 export default function Dashboard() {
   const router = useRouter();
+
+  // Guard: ensure user is logged in, otherwise redirect to login
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('admin_user');
+    if (!stored) {
+      router.push('/');
+      return null;
+    }
+  }
   const [stats, setStats] = useState<any>({
     totalOrders: 0,
     revenue: 0,
@@ -21,14 +31,23 @@ export default function Dashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const bid = localStorage.getItem('selected_branch_id');
-      setBranchId(bid);
-      
-      const query = bid ? `?branchId=${bid}` : '';
+      // Determine branchId based on role
+      const storageStr = localStorage.getItem('admin_user') || '{}';
+      const storage = JSON.parse(storageStr);
+      const currentUser = storage.user || storage;
+      const branchId = currentUser.role === 'branch_manager' ? currentUser.branch_id : localStorage.getItem('selected_branch_id');
+      setBranchId(branchId);
+
+      const query = branchId ? `?branchId=${branchId}` : '';
       const res = await api.get(`/stats/dashboard${query}`);
       setStats(res.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch stats', err);
+      if (err.response?.status === 401) {
+        // Token invalid or missing, redirect to login
+        localStorage.removeItem('admin_user');
+        router.push('/');
+      }
     } finally {
       setLoading(false);
     }
@@ -52,15 +71,6 @@ export default function Dashboard() {
         <h1 className="text-3xl font-extrabold text-slate-900">
           {branchId ? 'Branch Dashboard' : 'Organization Dashboard'}
         </h1>
-        {!branchId && (
-          <button 
-            onClick={() => router.push('/branches')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700 transition-colors"
-          >
-            <Storefront weight="bold" />
-            View Branches
-          </button>
-        )}
       </div>
 
       {/* Key Metrics */}
@@ -186,6 +196,14 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Branches List (Org Admin Only) */}
+      {!branchId && (
+        <div className="mt-8">
+            <h2 className="text-xl font-bold text-slate-800 mb-4">Your Branches</h2>
+            <BranchesManager />
         </div>
       )}
     </div>

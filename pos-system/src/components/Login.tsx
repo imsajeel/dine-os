@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Buildings, Lock, CaretRight, CircleNotch, ArrowCounterClockwise, Envelope, Key, Backspace } from '@phosphor-icons/react';
+import api from '@/lib/api';
 
 interface LoginProps {
   onLogin: () => void;
@@ -14,6 +15,7 @@ export default function Login({ onLogin }: LoginProps) {
   
   // Setup State
   const [orgId, setOrgId] = useState('');
+  const [branchId, setBranchId] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [terminalType, setTerminalType] = useState<'pos' | 'waiter' | 'kds'>('pos');
@@ -26,9 +28,10 @@ export default function Login({ onLogin }: LoginProps) {
     // Check for saved Token and Org ID
     const token = localStorage.getItem('dineos_auth_token');
     const savedOrgId = localStorage.getItem('dineos_org_id');
+    const savedBranchId = localStorage.getItem('dineos_branch_id');
     const savedOrgName = localStorage.getItem('dineos_org_name'); 
     
-    if (token && savedOrgId) {
+    if (token && savedOrgId && savedBranchId) {
       setStep('login');
       if (savedOrgName) {
         setOrgName(savedOrgName);
@@ -40,51 +43,66 @@ export default function Login({ onLogin }: LoginProps) {
     }
   }, []);
 
-  const handleSetup = (e: React.FormEvent) => {
+  const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     
-    // Simulate API Authentication
-    setTimeout(() => {
-      // Validation Logic
-      if (orgId !== "47d16db1-d727-4817-bd42-d646417a5e0b") {
-        setError("Invalid Organization ID");
-        setIsLoading(false);
-        return;
-      }
-      if (adminEmail !== "admin@coffee-me.com") {
-        setError("Invalid Admin Email");
-        setIsLoading(false);
-        return;
-      }
-      if (adminPassword !== "admin_password_123") {
-        setError("Invalid Password");
-        setIsLoading(false);
-        return;
-      }
+    try {
+        // 1. Authenticate Admin
+        const loginRes = await api.post('/auth/login', {
+            email: adminEmail,
+            password: adminPassword
+        });
 
-      // In a real app, this would validate against the backend and return a JWT
-      const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock_token";
-      const mockOrgName = "Coffee Me"; // This would come from API
-      
-      localStorage.setItem('dineos_org_id', orgId);
-      localStorage.setItem('dineos_auth_token', mockToken);
-      localStorage.setItem('dineos_org_name', mockOrgName);
-      localStorage.setItem('dineos_terminal_type', terminalType);
-      
-      setOrgName(mockOrgName);
-      
-      // KDS doesn't need PIN login - go straight to the app
-      if (terminalType === 'kds') {
+        const { access_token, user } = loginRes.data;
+        
+        // Verify Org ID matches
+        if (user.organization_id !== orgId) {
+            setError("Organization ID does not match the admin account.");
+            setIsLoading(false);
+            return;
+        }
+
+        // 2. Validate Branch
+        localStorage.setItem('dineos_auth_token', access_token);
+        
+        const branchesRes = await api.get(`/branches?orgId=${orgId}`);
+        const branches = branchesRes.data;
+        
+        const branch = branches.find((b: any) => b.id === branchId);
+
+        if (!branch) {
+            setError("Invalid Branch ID. This branch does not belong to your organization.");
+            localStorage.removeItem('dineos_auth_token'); // Clean up
+            setIsLoading(false);
+            return;
+        }
+
+        // 3. Save Session
+        localStorage.setItem('dineos_branch_id', branchId);
+        localStorage.setItem('dineos_org_id', orgId);
+        localStorage.setItem('dineos_org_name', branch.name);
+        localStorage.setItem('dineos_terminal_type', terminalType);
+        
+        setOrgName(branch.name);
+        
+        if (terminalType === 'kds') {
+            setIsLoading(false);
+            onLogin();
+        } else {
+            setStep('login');
+            setIsLoading(false);
+        }
+
+    } catch (err: any) {
+        console.error(err);
+        setError(err.response?.data?.message || "Authentication failed. Please check your credentials.");
         setIsLoading(false);
-        onLogin();
-      } else {
-        setStep('login');
-        setIsLoading(false);
-      }
-    }, 1500);
+    }
   };
+
+
 
   const handleLogin = (currentPin: string) => {
     setIsLoading(true);
@@ -127,11 +145,12 @@ export default function Login({ onLogin }: LoginProps) {
 
   const resetTerminal = () => {
     if (confirm('Are you sure you want to reset this terminal? This will clear all configuration.')) {
-      localStorage.removeItem('dineos_org_id');
+      localStorage.removeItem('dineos_branch_id');
       localStorage.removeItem('dineos_auth_token');
       localStorage.removeItem('dineos_org_name');
       localStorage.removeItem('dineos_terminal_type');
       setOrgId('');
+      setBranchId('');
       setAdminEmail('');
       setAdminPassword('');
       setPin('');
@@ -149,7 +168,7 @@ export default function Login({ onLogin }: LoginProps) {
           {step === 'setup' ? (
             <>
               <div className="mx-auto mb-6 flex justify-center">
-                <img src="/dine-os-dark.png" alt="DineOS" className="h-12" />
+                <img src="/dine-os-light.png" alt="DineOS" className="h-12" />
               </div>
               <h1 className="text-2xl font-bold text-slate-800 mb-2">Terminal Setup</h1>
               <p className="text-slate-500">Authorize this terminal</p>
@@ -197,6 +216,23 @@ export default function Login({ onLogin }: LoginProps) {
               </div>
 
               <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 ml-1">Branch ID</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <Buildings weight="bold" className="text-lg" />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={branchId}
+                    onChange={(e) => setBranchId(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                    placeholder="e.g. branch_12345678"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700 ml-1">Admin Email</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
@@ -212,6 +248,8 @@ export default function Login({ onLogin }: LoginProps) {
                   />
                 </div>
               </div>
+
+
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700 ml-1">Password</label>
