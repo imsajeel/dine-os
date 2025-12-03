@@ -3,6 +3,7 @@ import { House, Storefront, Users, ForkKnife, SignOut } from '@phosphor-icons/re
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Logo from './Logo';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -26,9 +27,8 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-slate-900 text-white h-screen flex flex-col p-4 fixed left-0 top-0">
-      <div className="text-2xl font-bold mb-8 px-4 flex items-center gap-2">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg"></div>
-        RestroOS
+      <div className="mb-8 px-4">
+        <Logo className="h-8 w-auto text-white" />
       </div>
       
       <nav className="flex-1 space-y-2">
