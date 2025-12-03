@@ -1,6 +1,6 @@
-# RestroOS
+# DineOS
 
-RestroOS is a comprehensive restaurant operating system designed to manage multiple branches, menus, orders, and reservations. It consists of a backend API, an admin dashboard, and a POS (Point of Sale) system.
+DineOS is a comprehensive restaurant operating system designed to manage multiple branches, menus, orders, and reservations. It consists of a backend API, an admin dashboard, and a POS (Point of Sale) system.
 
 ## Project Structure
 
