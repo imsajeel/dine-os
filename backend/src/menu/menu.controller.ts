@@ -44,4 +44,9 @@ export class MenuController {
   deleteMenuItem(@Param('id') id: string) {
     return this.menuService.deleteMenuItem(id);
   }
+
+  @Post('copy')
+  copyMenu(@Body() body: { sourceBranchId: string, targetBranchId: string, mode: 'all' | 'category', categoryId?: string }) {
+    return this.menuService.copyMenu(body.sourceBranchId, body.targetBranchId, body);
+  }
 }

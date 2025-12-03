@@ -13,6 +13,7 @@ export default function Menu() {
   
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   
   const [categoryForm, setCategoryForm] = useState({ name: '', branch_id: '' });
   const [itemForm, setItemForm] = useState({ 
@@ -23,6 +24,37 @@ export default function Menu() {
     branch_id: '',
     image_url: ''
   });
+
+  const [importForm, setImportForm] = useState({
+    sourceBranchId: '',
+    mode: 'all' as 'all' | 'category',
+    categoryId: ''
+  });
+  const [sourceCategories, setSourceCategories] = useState<any[]>([]);
+
+  const fetchSourceCategories = async (branchId: string) => {
+    const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    if (user.organization_id && branchId) {
+        const res = await api.get(`/menu/admin/${user.organization_id}?branchId=${branchId}`);
+        setSourceCategories(res.data.categories);
+    }
+  };
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const branchId = localStorage.getItem('selected_branch_id');
+    if (!branchId) return;
+
+    await api.post('/menu/copy', {
+        sourceBranchId: importForm.sourceBranchId,
+        targetBranchId: branchId,
+        mode: importForm.mode,
+        categoryId: importForm.categoryId
+    });
+    setIsImportModalOpen(false);
+    setImportForm({ sourceBranchId: '', mode: 'all', categoryId: '' });
+    fetchData();
+  };
 
   useEffect(() => {
     fetchData();
@@ -149,53 +181,75 @@ export default function Menu() {
               </div>
           ) : (
             <>
-              <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-            <button 
-                onClick={() => setActiveCategory('all')}
-                className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
-            >
-                All Items
-            </button>
-            {categories.map((c: any) => (
-                <button 
-                    key={c.id}
-                    onClick={() => setActiveCategory(c.id)}
-                    className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${activeCategory === c.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
-                >
-                    {c.name}
-                </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredItems.map((item: any) => (
-                <div key={item.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
-                    <div className="h-48 bg-slate-100 relative">
-                        {item.image_url ? (
-                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                <Image weight="duotone" className="text-4xl" />
-                            </div>
-                        )}
-                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow-sm">
-                            ${Number(item.price).toFixed(2)}
-                        </div>
+              {categories.length === 0 && items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+                    <div className="bg-slate-100 p-6 rounded-full mb-4">
+                        <ForkKnife weight="duotone" className="text-4xl text-slate-400" />
                     </div>
-                    <div className="p-4">
-                        <h3 className="font-bold text-slate-800 mb-1">{item.name}</h3>
-                        <p className="text-slate-500 text-sm mb-3 line-clamp-2">{item.description || 'No description'}</p>
-                        <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-                            <span className="text-xs font-bold text-slate-400 uppercase">{item.categories?.name}</span>
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Pencil weight="bold" /></button>
-                                <button className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash weight="bold" /></button>
-                            </div>
-                        </div>
+                    <h2 className="text-xl font-bold text-slate-800 mb-2">No Menu Items Found</h2>
+                    <p className="text-slate-500 max-w-sm mb-6">This branch has no menu items yet. You can add items manually or import from another branch.</p>
+                    <div className="flex gap-3">
+                        <button onClick={() => setIsCategoryModalOpen(true)} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-50 transition-colors">
+                            Add Manually
+                        </button>
+                        <button onClick={() => setIsImportModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">
+                            Import from Branch
+                        </button>
                     </div>
                 </div>
-            ))}
-          </div>
+              ) : (
+                <>
+                  <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
+                    <button 
+                        onClick={() => setActiveCategory('all')}
+                        className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                    >
+                        All Items
+                    </button>
+                    {categories.map((c: any) => (
+                        <button 
+                            key={c.id}
+                            onClick={() => setActiveCategory(c.id)}
+                            className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${activeCategory === c.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                        >
+                            {c.name}
+                        </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filteredItems.map((item: any) => (
+                        <div key={item.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
+                            <div className="h-48 bg-slate-100 relative">
+                                {item.image_url ? (
+                                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                        <Image weight="duotone" className="text-4xl" />
+                                    </div>
+                                )}
+                                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow-sm">
+                                    ${Number(item.price).toFixed(2)}
+                                </div>
+                            </div>
+                            <div className="p-4">
+                                <h3 className="font-bold text-slate-800 mb-1">{item.name}</h3>
+                                <p className="text-slate-500 text-sm mb-3 line-clamp-2">{item.description || 'No description'}</p>
+                                <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                                    <span className="text-xs font-bold text-slate-400 uppercase">{item.categories?.name}</span>
+                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Pencil weight="bold" /></button>
+                                        <button className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash weight="bold" /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </>
       )}
 
@@ -255,6 +309,77 @@ export default function Menu() {
                 <div className="flex justify-end gap-2">
                     <button type="button" onClick={() => setIsItemModalOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>
                     <button className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">Save</button>
+                </div>
+            </form>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <form onSubmit={handleImport} className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
+                <h2 className="text-xl font-bold mb-4 text-slate-800">Import Menu</h2>
+                
+                <label className="block text-sm font-bold text-slate-700 mb-1">Source Branch</label>
+                <select 
+                    className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500 bg-white" 
+                    value={importForm.sourceBranchId} 
+                    onChange={e => {
+                        setImportForm({...importForm, sourceBranchId: e.target.value});
+                        fetchSourceCategories(e.target.value);
+                    }}
+                    required
+                >
+                    <option value="">Select Branch</option>
+                    {branches.filter((b: any) => b.id !== selectedBranchId).map((b: any) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                </select>
+
+                <label className="block text-sm font-bold text-slate-700 mb-1">Import Mode</label>
+                <div className="flex gap-4 mb-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                            type="radio" 
+                            name="mode" 
+                            value="all" 
+                            checked={importForm.mode === 'all'} 
+                            onChange={() => setImportForm({...importForm, mode: 'all'})} 
+                        />
+                        <span className="text-slate-700">All Items</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                            type="radio" 
+                            name="mode" 
+                            value="category" 
+                            checked={importForm.mode === 'category'} 
+                            onChange={() => setImportForm({...importForm, mode: 'category'})} 
+                        />
+                        <span className="text-slate-700">Specific Category</span>
+                    </label>
+                </div>
+
+                {importForm.mode === 'category' && (
+                    <>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Select Category</label>
+                        <select 
+                            className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500 bg-white" 
+                            value={importForm.categoryId} 
+                            onChange={e => setImportForm({...importForm, categoryId: e.target.value})}
+                            required
+                        >
+                            <option value="">Select Category</option>
+                            {sourceCategories.map((c: any) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </>
+                )}
+
+                <div className="flex justify-end gap-2 mt-6">
+                    <button type="button" onClick={() => setIsImportModalOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>
+                    <button className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">Import</button>
                 </div>
             </form>
         </div>
