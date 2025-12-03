@@ -24,23 +24,32 @@ export default function Users() {
   }, []);
 
   const fetchData = async () => {
-    const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
-    const user = storage.user || storage;
-    const branchId = localStorage.getItem('selected_branch_id');
+    try {
+      const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
+      const user = storage.user || storage;
+      const branchId = localStorage.getItem('selected_branch_id');
 
-    if (user.organization_id) {
-        if (user.role === 'org_admin' && !branchId) {
-            setUsers([]);
-            return;
-        }
+      console.log('Fetching users for:', { orgId: user.organization_id, branchId, role: user.role });
 
-        const query = branchId ? `&branchId=${branchId}` : '';
-        const [usersRes, branchesRes] = await Promise.all([
-            api.get(`/users?orgId=${user.organization_id}${query}`),
-            api.get(`/branches?orgId=${user.organization_id}`)
-        ]);
-        setUsers(usersRes.data);
-        setBranches(branchesRes.data);
+      if (user.organization_id) {
+          if (user.role === 'org_admin' && !branchId) {
+              setUsers([]);
+              return;
+          }
+
+          const query = branchId ? `&branchId=${branchId}` : '';
+          const [usersRes, branchesRes] = await Promise.all([
+              api.get(`/users?orgId=${user.organization_id}${query}`),
+              api.get(`/branches?orgId=${user.organization_id}`)
+          ]);
+          
+          console.log('Fetched users:', usersRes.data);
+          setUsers(usersRes.data);
+          setBranches(branchesRes.data);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to load users');
     }
   };
 
