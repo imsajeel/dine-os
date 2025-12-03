@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowCounterClockwise, Trash, Minus, Plus, CaretRight, Coffee } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, Trash, Minus, Plus, CaretRight, Coffee, Printer } from "@phosphor-icons/react";
 import { CartItem, Modifier, OrderType } from '../../types/pos';
 
 type CartProps = {
@@ -14,6 +14,9 @@ type CartProps = {
   total: number;
   handleSendOrder: () => void;
   setIsPaymentModalOpen: (isOpen: boolean) => void;
+  hasExistingOrder?: boolean;
+  onPrintReceipt?: () => void;
+  onEdit?: (item: CartItem) => void;
 };
 
 export const Cart: React.FC<CartProps> = ({
@@ -27,7 +30,10 @@ export const Cart: React.FC<CartProps> = ({
   tax,
   total,
   handleSendOrder,
-  setIsPaymentModalOpen
+  setIsPaymentModalOpen,
+  hasExistingOrder = false,
+  onPrintReceipt,
+  onEdit
 }) => {
   return (
     <aside className="w-96 bg-white border-l border-slate-200 flex flex-col z-10 shadow-xl flex-shrink-0">
@@ -49,14 +55,27 @@ export const Cart: React.FC<CartProps> = ({
           </div>
           
           <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-800">Current Order</h2>
-              <button 
-                  onClick={clearCart}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Clear Cart"
-              >
-                  <ArrowCounterClockwise weight="bold" className="text-lg" />
-              </button>
+              <h2 className="text-xl font-bold text-slate-800">
+                {hasExistingOrder ? 'Existing Order' : 'Current Order'}
+              </h2>
+              <div className="flex items-center gap-2">
+                {hasExistingOrder && onPrintReceipt && (
+                  <button 
+                      onClick={onPrintReceipt}
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Print Receipt"
+                  >
+                      <Printer weight="bold" className="text-lg" />
+                  </button>
+                )}
+                <button 
+                    onClick={clearCart}
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Clear Cart"
+                >
+                    <ArrowCounterClockwise weight="bold" className="text-lg" />
+                </button>
+              </div>
           </div>
       </div>
 
@@ -64,9 +83,21 @@ export const Cart: React.FC<CartProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cart.length > 0 ? (
               cart.map((item, index) => (
-                  <div key={`${item.id}-${index}`} className={`flex items-center gap-3 p-3 rounded-xl border shadow-sm animate-slide-in ${item.isExisting ? 'bg-slate-50 border-slate-200 opacity-80' : 'bg-white border-slate-100'}`}>
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 relative">
-                           <img src={item.image} alt="" className="w-full h-full object-cover" />
+                  <div 
+                    key={`${item.id}-${index}`} 
+                    className={`flex items-center gap-3 p-3 rounded-xl border shadow-sm animate-slide-in ${item.isExisting ? 'bg-slate-50 border-slate-200 opacity-80' : 'bg-white border-slate-100 cursor-pointer hover:border-blue-300'}`}
+                    onClick={() => !item.isExisting && onEdit && onEdit(item)}
+                  >
+                      <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 relative">
+                           <img 
+                            src={item.image} 
+                            alt="" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.parentElement?.classList.add('bg-slate-200');
+                            }} 
+                           />
                            {item.isExisting && <div className="absolute inset-0 bg-slate-500/10 flex items-center justify-center"><span className="text-[10px] font-bold bg-white/80 px-1 rounded text-slate-600">SENT</span></div>}
                       </div>
                       <div className="flex-1 min-w-0">

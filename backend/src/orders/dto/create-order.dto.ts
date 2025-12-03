@@ -8,4 +8,5 @@ export class CreateOrderDto {
   }[];
   type: 'dine-in' | 'takeaway';
   table_id?: string;
+  order_id?: string;
 }

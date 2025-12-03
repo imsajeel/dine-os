@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ForkKnife,
   BeerBottle,
@@ -11,7 +11,12 @@ import {
   X,
   Check,
   CreditCard,
-  Money
+  Money,
+  Calendar,
+  Users,
+  PencilSimple,
+  ArrowsIn,
+  ArrowsOut
 } from '@phosphor-icons/react';
 import { Receipt as ReceiptComponent } from './Receipt'; // New import for ReceiptComponent
 import { createRoot } from 'react-dom/client'; // New import for createRoot
@@ -20,6 +25,9 @@ import { Header } from './pos/Header';
 import { CategoryList } from './pos/CategoryList';
 import { MenuGrid } from './pos/MenuGrid';
 import { Cart } from './pos/Cart';
+import { CashPaymentModal } from './pos/CashPaymentModal';
+import Reservations from './Reservations';
+import Settings from './Settings';
 import { MenuItem, Table, Modifier, ModifierGroup, CartItem, OrderType, Category } from '../types/pos';
 
 // --- Types ---
@@ -27,7 +35,7 @@ import { MenuItem, Table, Modifier, ModifierGroup, CartItem, OrderType, Category
 
 export default function POS() {
   // --- State ---
-  const [currentView, setCurrentView] = useState<'pos' | 'tables' | 'takeaway'>('pos'); // Updated type
+  const [currentView, setCurrentView] = useState<'pos' | 'tables' | 'takeaway' | 'reservations' | 'settings'>('tables'); // Changed default to 'tables'
   const [currentTime, setCurrentTime] = useState<string>('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -36,6 +44,17 @@ export default function POS() {
   const [currentDate, setCurrentDate] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('Staff');
   const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]); // New state for takeaway orders
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [isOrderSuccessModalOpen, setIsOrderSuccessModalOpen] = useState(false);
+  const [lastOrder, setLastOrder] = useState<any>(null);
+  const [reservations, setReservations] = useState<any[]>([]);
+  
+  // Manage Tables State
+  const [isManageMode, setIsManageMode] = useState(false);
+  const [selectedTablesForJoin, setSelectedTablesForJoin] = useState<string[]>([]);
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [tableToSplit, setTableToSplit] = useState<Table | null>(null);
+  const [splitCount, setSplitCount] = useState(2);
   
   // Data State
   const [categories, setCategories] = useState<Category[]>([
@@ -49,6 +68,8 @@ export default function POS() {
   // Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
+  const [isCashPaymentModalOpen, setIsCashPaymentModalOpen] = useState(false);
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'select' | 'processing' | 'success'>('select');
   
   // Modifier State
@@ -73,19 +94,23 @@ export default function POS() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = useCallback(async () => {
       const orgId = localStorage.getItem('dineos_org_id');
       if (!orgId) return;
 
       try {
+        const settings = JSON.parse(localStorage.getItem('dineos_settings') || '{}');
+        const branchId = settings.branchId;
+        const queryParams = branchId ? `?branchId=${branchId}` : '';
+        const queryParamsWithOrg = branchId ? `&branchId=${branchId}` : '';
+
         // Fetch Menu
-        const menuRes = await fetch(`http://localhost:3001/menu/${orgId}`);
+        const menuRes = await fetch(`http://localhost:3001/menu/${orgId}${queryParams}`);
         const menuData = await menuRes.json();
         console.log('Menu Data:', menuData); // Debug log
 
         // Fetch Tables
-        const tablesRes = await fetch(`http://localhost:3001/tables/${orgId}`);
+        const tablesRes = await fetch(`http://localhost:3001/tables/${orgId}${queryParams}`);
         const tablesData = await tablesRes.json();
         if (Array.isArray(tablesData)) {
             setTables(tablesData);
@@ -93,6 +118,11 @@ export default function POS() {
             console.error('Tables data is not an array:', tablesData);
             setTables([]);
         }
+
+        // Fetch Reservations
+        const resRes = await fetch(`http://localhost:3001/reservations?organization_id=${orgId}${queryParamsWithOrg}`);
+        const resData = await resRes.json();
+        setReservations(resData);
 
         // Map Icons
         const iconMap: Record<string, any> = {
@@ -138,8 +168,9 @@ export default function POS() {
       } finally {
         setIsLoading(false);
       }
-    };
+  }, []);
 
+  useEffect(() => {
     fetchData();
 
     // Decode token for user email
@@ -155,9 +186,18 @@ export default function POS() {
         console.error('Failed to decode token', e);
       }
     }
-  }, []);
+  }, [fetchData]);
 
-  // Open table modal if dine-in is selected but no table
+  // Poll for updates every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+
+    // Open table modal if dine-in is selected but no table
   useEffect(() => {
       if (orderType === 'dine-in' && !selectedTable && !isLoading) {
           setIsTableModalOpen(true);
@@ -188,6 +228,19 @@ export default function POS() {
   };
 
   const handleTableClick = (table: Table) => {
+    if (isManageMode) {
+        if (table.current_status !== 'free') {
+            alert('Only free tables can be managed');
+            return;
+        }
+        if (selectedTablesForJoin.includes(table.id)) {
+            setSelectedTablesForJoin(prev => prev.filter(id => id !== table.id));
+        } else {
+            setSelectedTablesForJoin(prev => [...prev, table.id]);
+        }
+        return;
+    }
+
     setSelectedTable(table);
     
     if (table.active_order) {
@@ -320,7 +373,7 @@ export default function POS() {
   useEffect(() => {
     if (currentView === 'takeaway') {
       fetchTakeawayOrders();
-      const interval = setInterval(fetchTakeawayOrders, 10000); // Poll every 10s
+      const interval = setInterval(fetchTakeawayOrders, 2000); // Poll every 2s
       return () => clearInterval(interval);
     }
   }, [currentView]);
@@ -341,7 +394,8 @@ export default function POS() {
         notes: item.notes
       })),
       type: orderType,
-      table_id: selectedTable?.id
+      table_id: orderType === 'takeaway' ? null : selectedTable?.id,
+      order_id: selectedTable?.active_order?.id || activeOrderId
     };
 
     try {
@@ -355,8 +409,9 @@ export default function POS() {
 
       if (response.ok) {
         const newOrder = await response.json();
-        alert('Order sent successfully!');
-        printReceipt(newOrder); // Print Receipt
+        setLastOrder(newOrder);
+        setIsOrderSuccessModalOpen(true);
+        
         setCart([]);
         if (orderType === 'dine-in') setSelectedTable(null);
       } else {
@@ -368,18 +423,84 @@ export default function POS() {
     }
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
+    const orderId = selectedTable?.active_order?.id || activeOrderId;
+    if (!orderId) return;
+    
     setPaymentStep('processing');
-    setTimeout(() => {
+    
+    try {
+      // 1. Update order status to completed
+      await fetch(`http://localhost:3001/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status: 'completed',
+          payment_status: 'paid',
+          payment_method: 'cash',
+          total_amount: (selectedTable?.active_order as any)?.total_amount || cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) * 1.1 // Fallback calculation
+        }),
+      });
+
+      // 2. If dine-in, free the table
+      if (selectedTable) {
+        await fetch(`http://localhost:3001/floor_tables/${selectedTable.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_status: 'free' }),
+        });
+      }
+
       setPaymentStep('success');
+      
+      // 3. Print Receipt (optional, maybe auto-print)
+      // printReceipt(selectedTable.active_order);
+
       setTimeout(() => {
         setIsPaymentModalOpen(false);
-        setCart([]);
+        setIsCashPaymentModalOpen(false);
         setPaymentStep('select');
-        // Reset table if dine-in
-        if (orderType === 'dine-in') setSelectedTable(null);
+        setSelectedTable(null);
+        setActiveOrderId(null);
+        setCart([]);
+        fetchData(); // Refresh tables and orders
+        
+        // If dine-in, go back to tables view
+        if (orderType === 'dine-in') {
+            setCurrentView('tables');
+        } else {
+            // If takeaway, go back to takeaway view
+            fetchTakeawayOrders();
+            setCurrentView('takeaway');
+        }
       }, 2000);
-    }, 2000);
+
+    } catch (error) {
+      console.error('Payment failed', error);
+      setPaymentStep('select');
+      alert('Payment failed. Please try again.');
+    }
+  };
+
+  const handleTakeawayOrderClick = (order: any) => {
+    setSelectedTable(null);
+    setOrderType('takeaway');
+    setActiveOrderId(order.id);
+    
+    // Load cart
+    const loadedCart: CartItem[] = order.order_items.map((oi: any) => ({
+      ...oi.menu_items,
+      id: oi.menu_items.id,
+      quantity: oi.quantity,
+      selectedModifiers: oi.modifiers ? (typeof oi.modifiers === 'string' ? JSON.parse(oi.modifiers) : oi.modifiers) : [],
+      notes: oi.notes,
+      isExisting: true,
+      image: oi.menu_items.image,
+      price: Number(oi.price_at_time)
+    }));
+    
+    setCart(loadedCart);
+    setCurrentView('pos');
   };
 
   const confirmModifiers = () => {
@@ -397,6 +518,53 @@ export default function POS() {
       setSelectedItemForModifiers(null);
       setSelectedModifiers([]);
       setModifierNote('');
+    }
+  };
+
+
+
+  const handleJoinTables = async () => {
+    if (selectedTablesForJoin.length < 2) return;
+    try {
+        const res = await fetch('http://localhost:3001/tables/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tableIds: selectedTablesForJoin })
+        });
+        if (res.ok) {
+            setIsManageMode(false);
+            setSelectedTablesForJoin([]);
+            fetchData();
+        } else {
+            const text = await res.text();
+            alert('Failed to join tables: ' + text);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Failed to join tables');
+    }
+  };
+
+  const handleSplitTable = async () => {
+    if (!tableToSplit) return;
+    try {
+        const res = await fetch(`http://localhost:3001/tables/split/${tableToSplit.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ splits: splitCount })
+        });
+        if (res.ok) {
+            setIsSplitModalOpen(false);
+            setTableToSplit(null);
+            setIsManageMode(false);
+            fetchData();
+        } else {
+            const text = await res.text();
+            alert('Failed to split table: ' + text);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Failed to split table');
     }
   };
 
@@ -437,8 +605,6 @@ export default function POS() {
                   // ... POS View ...
                   <>
                     {/* Categories */}
-                  <>
-                    {/* Categories */}
                     <CategoryList 
                       categories={categories} 
                       activeCategory={activeCategory} 
@@ -452,40 +618,213 @@ export default function POS() {
                       handleItemClick={handleItemClick} 
                     />
                   </>
-                  </>
                 ) : currentView === 'tables' ? (
-                  /* Tables View */
-                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                    {tables.map((table) => (
-                      <button
-                        key={table.id}
-                        onClick={() => handleTableClick(table)}
-                        className={`
-                          relative p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all hover:shadow-lg cursor-pointer
-                          ${table.current_status === 'free' 
-                            ? 'bg-white border-slate-200 hover:border-blue-500' 
-                            : 'bg-slate-50 border-slate-200 hover:border-slate-300'}
-                        `}
-                      >
-                        <div className={`
-                          w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold
-                          ${table.current_status === 'free' ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'}
-                        `}>
-                          {table.table_number}
+                  <>
+                    {/* Tables View */}
+                    <div className="flex gap-6 h-full">
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                              {tables.map((table) => (
+                                <button
+                                  key={table.id}
+                                  onClick={() => handleTableClick(table)}
+                                  className={`
+                                    relative p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all hover:shadow-lg cursor-pointer
+                                    ${isManageMode && selectedTablesForJoin.includes(table.id) ? 'ring-4 ring-blue-500 ring-offset-2' : ''}
+                                    ${table.current_status === 'free' 
+                                      ? 'bg-green-50 border-green-200 hover:border-green-400' 
+                                      : 'bg-orange-50 border-orange-200 hover:border-orange-400'}
+                                  `}
+                                >
+                                  <div className={`
+                                    w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold
+                                    ${table.current_status === 'free' ? 'bg-green-100 text-green-600' : 'bg-orange-200 text-orange-700'}
+                                  `}>
+                                    {table.table_number}
+                                  </div>
+                                  <div className="text-center w-full">
+                                    <p className="font-semibold text-slate-700 text-lg">Table {table.table_number}</p>
+                                    <p className="text-slate-500 text-sm">{table.capacity} Seats</p>
+                                    
+                                    {table.active_order ? (
+                                      <>
+                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mt-3 ${
+                                          table.active_order.status === 'new' ? 'bg-blue-100 text-blue-600' :
+                                          table.active_order.status === 'prep' ? 'bg-yellow-100 text-yellow-600' :
+                                          table.active_order.status === 'ready' ? 'bg-green-100 text-green-600' :
+                                          'bg-slate-200 text-slate-500'
+                                        }`}>
+                                          <div className={`w-2 h-2 rounded-full ${
+                                            table.active_order.status === 'new' ? 'bg-blue-500' :
+                                            table.active_order.status === 'prep' ? 'bg-yellow-500' :
+                                            table.active_order.status === 'ready' ? 'bg-green-500' :
+                                            'bg-slate-500'
+                                          }`} />
+                                          {table.active_order.status}
+                                        </div>
+                                        
+                                        <div className="mt-2 text-base text-slate-600 font-bold font-mono">
+                                          {(() => {
+                                            const elapsed = Date.now() - new Date(table.active_order.created_at).getTime();
+                                            const hours = Math.floor(elapsed / 3600000);
+                                            const minutes = Math.floor((elapsed % 3600000) / 60000);
+                                            if (hours > 0) {
+                                              return `${hours}h ${minutes}m`;
+                                            }
+                                            return `${minutes}m`;
+                                          })()}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mt-3 ${
+                                        table.current_status === 'free' ? 'bg-green-100 text-green-600' : 'bg-slate-200 text-slate-500'
+                                      }`}>
+                                        <div className={`w-2 h-2 rounded-full ${table.current_status === 'free' ? 'bg-green-500' : 'bg-slate-500'}`} />
+                                        {table.current_status}
+                                      </div>
+                                    )}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
                         </div>
-                        <div className="text-center">
-                          <p className="font-semibold text-slate-700 text-lg">Table {table.table_number}</p>
-                          <p className="text-slate-500 text-sm">{table.capacity} Seats</p>
-                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mt-3 ${
-                            table.current_status === 'free' ? 'bg-green-100 text-green-600' : 'bg-slate-200 text-slate-500'
-                          }`}>
-                            <div className={`w-2 h-2 rounded-full ${table.current_status === 'free' ? 'bg-green-500' : 'bg-slate-500'}`} />
-                            {table.current_status}
-                          </div>
+                    
+                        {/* Today's Reservations Sidebar */}
+                        <div className="w-80 bg-white border-l border-slate-200 p-6 overflow-y-auto hidden xl:block">
+                            <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <Calendar weight="bold" className="text-blue-600" />
+                                Today's Reservations
+                            </h3>
+                            <div className="space-y-3">
+                                {reservations.filter(r => new Date(r.reservation_time).toDateString() === new Date().toDateString()).length === 0 ? (
+                                    <p className="text-slate-400 text-sm text-center py-4">No reservations for today</p>
+                                ) : (
+                                    reservations
+                                        .filter(r => new Date(r.reservation_time).toDateString() === new Date().toDateString())
+                                        .sort((a, b) => new Date(a.reservation_time).getTime() - new Date(b.reservation_time).getTime())
+                                        .map(res => (
+                                        <div key={res.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="font-bold text-slate-700">{res.customer_name}</span>
+                                                <span className="text-xs font-bold bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
+                                                    {new Date(res.reservation_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-xs text-slate-500">
+                                                <span className="flex items-center gap-1"><Users /> {res.party_size}</span>
+                                                {res.floor_tables && <span className="font-semibold">Table {res.floor_tables.table_number}</span>}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
-                      </button>
-                    ))}
-                  </div>
+                    </div>
+                    
+                    {/* Floating New Order Button */}
+                    <div>
+                        <button
+                          onClick={() => setIsNewOrderModalOpen(true)}
+                          className="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-20"
+                          title="New Order"
+                        >
+                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </button>
+                    </div>
+
+                    {/* Manage Tables Toggle */}
+                    <div>
+                        <button
+                          onClick={() => {
+                              setIsManageMode(!isManageMode);
+                              setSelectedTablesForJoin([]);
+                          }}
+                          className={`fixed bottom-8 right-28 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-20 ${isManageMode ? 'bg-slate-800 text-white' : 'bg-white text-slate-600'}`}
+                          title="Manage Tables"
+                        >
+                          {isManageMode ? <Check weight="bold" className="text-2xl" /> : <PencilSimple weight="bold" className="text-2xl" />}
+                        </button>
+                    </div>
+
+                    {/* Manage Toolbar */}
+                    {isManageMode && (
+                        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-full shadow-xl border border-slate-200 flex items-center gap-4 z-30 animate-fade-in-up">
+                            <span className="font-bold text-slate-700">{selectedTablesForJoin.length} Selected</span>
+                            <div className="h-6 w-px bg-slate-200"></div>
+                            <button 
+                                onClick={handleJoinTables}
+                                disabled={selectedTablesForJoin.length < 2}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+                            >
+                                <ArrowsIn weight="bold" /> Join
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    if (selectedTablesForJoin.length === 1) {
+                                        const t = tables.find(t => t.id === selectedTablesForJoin[0]);
+                                        if (t) {
+                                            setTableToSplit(t);
+                                            setIsSplitModalOpen(true);
+                                        }
+                                    }
+                                }}
+                                disabled={selectedTablesForJoin.length !== 1}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 transition-colors"
+                            >
+                                <ArrowsOut weight="bold" /> Split
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Split Modal */}
+                    {isSplitModalOpen && (
+                        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
+                                <h3 className="text-xl font-bold text-slate-800 mb-4">Split Table {tableToSplit?.table_number}</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Split into how many?</label>
+                                        <div className="flex gap-2">
+                                            {[2, 3, 4].map(n => (
+                                                <button 
+                                                    key={n}
+                                                    onClick={() => setSplitCount(n)}
+                                                    className={`flex-1 py-3 rounded-xl font-bold border-2 transition-all ${splitCount === n ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                                                >
+                                                    {n}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3 pt-2">
+                                        <button onClick={() => setIsSplitModalOpen(false)} className="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+                                        <button onClick={handleSplitTable} className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200">Split</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                  </>
+                ) : currentView === 'reservations' ? (
+                    <Reservations 
+                        onTakeOrder={(res) => {
+                            if (res.floor_tables) {
+                                const table = tables.find(t => t.id === res.floor_tables?.id);
+                                if (table) {
+                                    handleTableClick(table);
+                                } else {
+                                    alert('Table not found');
+                                }
+                            } else {
+                                alert('Please select a table for this reservation');
+                                setCurrentView('tables');
+                            }
+                        }}
+                    />
+                ) : currentView === 'settings' ? (
+                    <Settings />
                 ) : (
                   /* Takeaway View */
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -496,7 +835,11 @@ export default function POS() {
                       </div>
                     ) : (
                       takeawayOrders.map(order => (
-                        <div key={order.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div 
+                            key={order.id} 
+                            className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all"
+                            onClick={() => handleTakeawayOrderClick(order)}
+                        >
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <h3 className="text-lg font-bold text-slate-800">Order #{order.id.toString().slice(-4)}</h3>
@@ -539,20 +882,32 @@ export default function POS() {
       </main>
 
       {/* 3. Right Sidebar (Cart) */}
-      {/* 3. Right Sidebar (Cart) */}
-      <Cart 
-        cart={cart}
-        orderType={orderType}
-        setOrderType={setOrderType}
-        clearCart={clearCart}
-        removeFromCart={removeFromCart}
-        updateQuantity={updateQuantity}
-        subtotal={subtotal}
-        tax={tax}
-        total={total}
-        handleSendOrder={handleSendOrder}
-        setIsPaymentModalOpen={setIsPaymentModalOpen}
-      />
+      {currentView === 'pos' && (
+        <Cart 
+          cart={cart}
+          orderType={orderType}
+          setOrderType={(type) => {
+            setOrderType(type);
+            if (type === 'takeaway') setSelectedTable(null);
+          }}
+          clearCart={clearCart}
+          removeFromCart={removeFromCart}
+          updateQuantity={updateQuantity}
+          subtotal={subtotal}
+          tax={tax}
+          total={total}
+          handleSendOrder={handleSendOrder}
+          setIsPaymentModalOpen={setIsPaymentModalOpen}
+          hasExistingOrder={!!selectedTable?.active_order || !!activeOrderId}
+          onPrintReceipt={() => (selectedTable?.active_order || activeOrderId) && printReceipt(selectedTable?.active_order || { id: activeOrderId, order_items: cart, total_amount: total })}
+          onEdit={(item) => {
+            setSelectedItemForModifiers(item);
+            setSelectedModifiers(item.selectedModifiers || []);
+            setModifierNote(item.notes || '');
+            setIsModifierModalOpen(true);
+          }}
+        />
+      )}
 
       {/* Table Selection Modal */}
       {isTableModalOpen && (
@@ -712,7 +1067,13 @@ export default function POS() {
                                     <CreditCard weight="duotone" className="text-3xl text-slate-400 group-hover:text-blue-500" />
                                     <span className="font-semibold text-slate-600 group-hover:text-blue-600">Card</span>
                                 </button>
-                                <button onClick={() => handlePayment()} className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-slate-100 hover:border-green-500 hover:bg-green-50 transition-all group">
+                                <button 
+                                  onClick={() => {
+                                    setIsPaymentModalOpen(false);
+                                    setIsCashPaymentModalOpen(true);
+                                  }} 
+                                  className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-slate-100 hover:border-green-500 hover:bg-green-50 transition-all group"
+                                >
                                     <Money weight="duotone" className="text-3xl text-slate-400 group-hover:text-green-500" />
                                     <span className="font-semibold text-slate-600 group-hover:text-green-600">Cash</span>
                                 </button>
@@ -743,6 +1104,97 @@ export default function POS() {
                         <p className="text-slate-500">Receipt sent to printer.</p>
                     </div>
                 )}
+            </div>
+        </div>
+      )}
+
+      {/* Cash Payment Modal */}
+      {isCashPaymentModalOpen && (
+        <CashPaymentModal
+          total={total}
+          onClose={() => setIsCashPaymentModalOpen(false)}
+          onComplete={handlePayment}
+        />
+      )}
+
+      {/* New Order Type Selection Modal */}
+      {isNewOrderModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full animate-zoom-in">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">New Order</h2>
+              <p className="text-slate-500">Select order type to continue</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => {
+                  setOrderType('dine-in');
+                  setIsNewOrderModalOpen(false);
+                  setIsTableModalOpen(true);
+                }}
+                className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-all group"
+              >
+                <ForkKnife weight="duotone" className="text-5xl text-blue-600" />
+                <span className="font-bold text-blue-700">Dine In</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setOrderType('takeaway');
+                  setSelectedTable(null);
+                  setCart([]);
+                  setIsNewOrderModalOpen(false);
+                  setCurrentView('pos');
+                }}
+                className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-400 transition-all group"
+              >
+                <Bag weight="duotone" className="text-5xl text-green-600" />
+                <span className="font-bold text-green-700">Takeaway</span>
+              </button>
+            </div>
+            
+            <button
+              onClick={() => setIsNewOrderModalOpen(false)}
+              className="mt-6 w-full py-3 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Order Success Modal */}
+      {isOrderSuccessModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-zoom-in p-8 text-center">
+                <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Check weight="bold" className="text-4xl" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">Order Sent Successfully!</h2>
+                <p className="text-slate-500 mb-8">Would you like to print the receipt?</p>
+                
+                <div className="flex gap-4">
+                    <button 
+                        onClick={() => {
+                            setIsOrderSuccessModalOpen(false);
+                            setLastOrder(null);
+                        }}
+                        className="flex-1 py-3 px-6 rounded-xl border-2 border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={() => {
+                            printReceipt(lastOrder);
+                            setIsOrderSuccessModalOpen(false);
+                            setLastOrder(null);
+                        }}
+                        className="flex-1 py-3 px-6 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all"
+                    >
+                        Print
+                    </button>
+                </div>
             </div>
         </div>
       )}

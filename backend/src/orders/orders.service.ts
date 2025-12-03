@@ -45,8 +45,13 @@ export class OrdersService {
     }
 
     // Check for existing active order for this table
+    // Check for existing active order for this table or provided order_id
     let existingOrder: any = null;
-    if (type === 'dine-in' && table_id) {
+    if (createOrderDto.order_id) {
+        existingOrder = await this.prisma.orders.findUnique({
+            where: { id: BigInt(createOrderDto.order_id) }
+        });
+    } else if (type === 'dine-in' && table_id) {
         existingOrder = await this.prisma.orders.findFirst({
             where: {
                 table_id: table_id,
@@ -67,9 +72,15 @@ export class OrdersService {
         const updatedOrder = await this.prisma.orders.update({
             where: { id: existingOrder.id },
             data: { total_amount: newTotal },
-            include: { order_items: true } // Return with items
+            include: { order_items: true }
         });
-        return updatedOrder;
+        
+        // Handle BigInt serialization
+        return {
+            ...updatedOrder,
+            id: updatedOrder.id.toString(),
+            total_amount: Number(updatedOrder.total_amount)
+        };
     } else {
         // Create New Order
         const order = await this.prisma.orders.create({
@@ -92,7 +103,13 @@ export class OrdersService {
             data: { current_status: 'occupied' }
           });
         }
-        return order;
+        
+        // Handle BigInt serialization
+        return {
+            ...order,
+            id: order.id.toString(),
+            total_amount: Number(order.total_amount)
+        };
     }
   }
 
@@ -142,11 +159,36 @@ export class OrdersService {
     return `This action returns a #${id} order`;
   }
 
-  update(id: number, updateOrderDto: UpdateOrderDto) {
-    return `This action updates a #${id} order`;
+  async update(id: number, updateOrderDto: UpdateOrderDto) {
+    const order = await this.prisma.orders.update({
+      where: { id: BigInt(id) },
+      data: updateOrderDto as any
+    });
+    
+    // If order is completed and has a table, free the table
+    if ((updateOrderDto as any).status === 'completed' && order.table_id) {
+      await this.prisma.floor_tables.update({
+        where: { id: order.table_id },
+        data: { current_status: 'free' }
+      });
+    }
+    
+    // Convert BigInt to string for JSON serialization
+    return {
+      ...order,
+      id: order.id.toString(),
+      total_amount: Number(order.total_amount)
+    };
   }
 
   remove(id: number) {
     return `This action removes a #${id} order`;
+  }
+
+  async updateOrderItemStatus(itemId: string, status: string) {
+    return this.prisma.order_items.update({
+      where: { id: itemId },
+      data: { status: status as any }
+    });
   }
 }

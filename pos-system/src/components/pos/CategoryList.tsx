@@ -13,8 +13,13 @@ export const CategoryList: React.FC<CategoryListProps> = ({ categories, activeCa
         {categories.map(cat => {
             const isActive = activeCategory === cat.id;
             const baseClass = "flex items-center gap-2 px-6 py-3 rounded-xl border transition-all duration-200 whitespace-nowrap cursor-pointer select-none";
-            const activeClass = "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200";
-            const inactiveClass = "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50";
+            // Dark theme active: dark bg, white text
+            const activeClass = "bg-slate-800 text-white border-slate-800 shadow-lg shadow-slate-400";
+            // Dark theme inactive: white bg, dark text (or maybe light gray bg?)
+            // Let's make inactive look standard but active look "dark theme" as requested, or maybe the whole bar?
+            // "update categories make dark theme" -> likely means the active state or the buttons themselves.
+            // Let's try a sleek dark style for the buttons.
+            const inactiveClass = "bg-white text-slate-600 border-slate-200 hover:border-slate-800 hover:bg-slate-50";
             const Icon = cat.icon;
 
             return (

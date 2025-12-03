@@ -74,8 +74,15 @@ export default function Login({ onLogin }: LoginProps) {
       localStorage.setItem('dineos_terminal_type', terminalType);
       
       setOrgName(mockOrgName);
-      setStep('login');
-      setIsLoading(false);
+      
+      // KDS doesn't need PIN login - go straight to the app
+      if (terminalType === 'kds') {
+        setIsLoading(false);
+        onLogin();
+      } else {
+        setStep('login');
+        setIsLoading(false);
+      }
     }, 1500);
   };
 
@@ -141,10 +148,8 @@ export default function Login({ onLogin }: LoginProps) {
         <div className="p-8 pb-0 text-center">
           {step === 'setup' ? (
             <>
-              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200 mx-auto mb-6">
-                <svg width="32" height="32" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
-                    <path d="M 154 51 Q 191 2 256 0 Q 321 2 358 51 Q 383 33 416 32 Q 427 32 438 35 Q 471 43 491 69 Q 512 94 512 128 Q 512 139 510 150 Q 502 188 488 227 Q 473 266 461 292 Q 449 319 448 320 Q 448 320 448 320 L 374 320 L 374 320 L 400 163 L 400 163 Q 401 148 387 144 Q 372 143 368 157 L 341 320 L 341 320 L 272 320 L 272 320 L 272 160 L 272 160 Q 271 145 256 144 Q 241 145 240 160 L 240 320 L 240 320 L 171 320 L 171 320 L 144 157 L 144 157 Q 140 143 125 144 Q 111 148 112 163 L 138 320 L 138 320 L 64 320 L 64 320 Q 63 319 51 292 Q 39 266 24 227 Q 10 188 3 150 Q 0 139 0 128 Q 0 94 21 69 Q 41 43 74 35 Q 85 32 96 32 Q 129 33 154 51 L 154 51 Z M 448 448 Q 447 475 429 493 L 429 493 L 429 493 Q 411 511 384 512 L 128 512 L 128 512 Q 101 511 83 493 Q 65 475 64 448 L 64 352 L 64 352 L 448 352 L 448 352 L 448 448 L 448 448 Z" fill="currentColor"/>
-                </svg>
+              <div className="mx-auto mb-6 flex justify-center">
+                <img src="/dine-os-dark.png" alt="DineOS" className="h-12" />
               </div>
               <h1 className="text-2xl font-bold text-slate-800 mb-2">Terminal Setup</h1>
               <p className="text-slate-500">Authorize this terminal</p>

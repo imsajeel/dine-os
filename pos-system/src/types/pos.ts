@@ -44,6 +44,8 @@ export type Table = {
   current_status: 'free' | 'occupied' | 'reserved';
   active_order?: {
     id: string | number;
+    status: string;
+    created_at: string;
     order_items: {
       menu_items: MenuItem;
       quantity: number;

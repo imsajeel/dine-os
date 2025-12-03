@@ -31,4 +31,9 @@ export class OrdersController {
   remove(@Param('id') id: string) {
     return this.ordersService.remove(+id);
   }
+
+  @Patch('items/:itemId')
+  updateItemStatus(@Param('itemId') itemId: string, @Body() body: { status: string }) {
+    return this.ordersService.updateOrderItemStatus(itemId, body.status);
+  }
 }

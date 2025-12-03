@@ -3,7 +3,7 @@ import { MagnifyingGlass, User } from "@phosphor-icons/react";
 import { Table, OrderType } from '../../types/pos';
 
 type HeaderProps = {
-  currentView: 'pos' | 'tables' | 'takeaway';
+  currentView: 'pos' | 'tables' | 'takeaway' | 'reservations' | 'settings';
   currentDate: string;
   currentTime: string;
   searchQuery: string;
@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
         <div>
             <h1 className="text-2xl font-bold text-slate-800">
-              {currentView === 'pos' ? 'New Order' : currentView === 'tables' ? 'Tables Overview' : 'Takeaway Orders'}
+              {currentView === 'pos' ? 'New Order' : currentView === 'tables' ? 'Tables Overview' : currentView === 'reservations' ? 'Reservations' : currentView === 'settings' ? 'Settings' : 'Takeaway Orders'}
             </h1>
             <div className="flex items-center gap-2 text-sm text-slate-400">
               <span>{currentDate}</span>
