@@ -7,7 +7,10 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(orgId: string, branchId?: string) {
-    const where: any = { organization_id: orgId };
+    const where: any = { 
+      organization_id: orgId,
+      role: { not: 'org_admin' } // Exclude org admins from the list
+    };
     
     // If branchId is provided, include users assigned to that branch OR org-level users (branch_id is null)
     if (branchId) {

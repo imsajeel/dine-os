@@ -189,7 +189,6 @@ export default function Users() {
                 <select className="w-full p-3 border rounded-lg mb-6 outline-none focus:border-blue-500 bg-white" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
                     <option value="staff">Staff</option>
                     <option value="branch_manager">Branch Manager</option>
-                    <option value="org_admin">Org Admin</option>
                 </select>
 
                 <div className="flex justify-end gap-2">
