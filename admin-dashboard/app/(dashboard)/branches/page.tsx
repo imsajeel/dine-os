@@ -13,7 +13,8 @@ export default function Branches() {
   }, []);
 
   const fetchBranches = async () => {
-    const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const user = storage.user || storage;
     if (user.organization_id) {
         const res = await api.get(`/branches?orgId=${user.organization_id}`);
         setBranches(res.data);
@@ -22,7 +23,8 @@ export default function Branches() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const storage = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    const user = storage.user || storage;
     await api.post('/branches', { ...formData, organization_id: user.organization_id });
     setIsModalOpen(false);
     setFormData({ name: '', address: '', phone: '' });

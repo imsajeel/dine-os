@@ -12,8 +12,12 @@ export default function Sidebar() {
 
   useEffect(() => {
     const u = localStorage.getItem('admin_user');
-    if (!u) router.push('/');
-    else setUser(JSON.parse(u));
+    if (!u) {
+      router.push('/');
+    } else {
+      const data = JSON.parse(u);
+      setUser(data.user || data);
+    }
   }, []);
 
   const handleLogout = () => {
