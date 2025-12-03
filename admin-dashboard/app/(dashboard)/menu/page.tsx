@@ -15,6 +15,9 @@ export default function Menu() {
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  
   const [categoryForm, setCategoryForm] = useState({ name: '', branch_id: '' });
   const [itemForm, setItemForm] = useState({ 
     name: '', 
@@ -68,16 +71,11 @@ export default function Menu() {
     const branchId = localStorage.getItem('selected_branch_id');
 
     if (user.organization_id) {
-        // If admin and no branch selected, clear data
         if (user.role === 'org_admin' && !branchId) {
             setCategories([]);
             setItems([]);
             return;
         }
-
-        // If admin, use selected branch. If staff, use their assigned branch (handled by backend usually or we pass it)
-        // Actually backend /menu/admin/:orgId returns all. We should filter or pass branchId to backend.
-        // Let's pass branchId query param if exists.
         
         const query = branchId ? `?branchId=${branchId}` : '';
         
@@ -91,32 +89,103 @@ export default function Menu() {
     }
   };
 
-  const handleCreateCategory = async (e: React.FormEvent) => {
+  const openCategoryModal = (category?: any) => {
+    if (category) {
+      setEditingCategory(category);
+      setCategoryForm({ 
+        name: category.name, 
+        branch_id: category.branch_id || '' 
+      });
+    } else {
+      setEditingCategory(null);
+      setCategoryForm({ name: '', branch_id: '' });
+    }
+    setIsCategoryModalOpen(true);
+  };
+
+  const openItemModal = (item?: any) => {
+    if (item) {
+      setEditingItem(item);
+      setItemForm({
+        name: item.name,
+        price: item.price.toString(),
+        description: item.description || '',
+        category_id: item.category_id || '',
+        branch_id: item.branch_id || '',
+        image_url: item.image_url || ''
+      });
+    } else {
+      setEditingItem(null);
+      setItemForm({ name: '', price: '', description: '', category_id: '', branch_id: '', image_url: '' });
+    }
+    setIsItemModalOpen(true);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
-    await api.post('/menu/category', {
+    
+    if (editingCategory) {
+      // Update existing category
+      await api.put(`/menu/category/${editingCategory.id}`, {
         ...categoryForm,
         organization_id: user.organization_id,
         branch_id: categoryForm.branch_id || null
-    });
+      });
+    } else {
+      // Create new category
+      await api.post('/menu/category', {
+        ...categoryForm,
+        organization_id: user.organization_id,
+        branch_id: categoryForm.branch_id || null
+      });
+    }
+    
     setIsCategoryModalOpen(false);
     setCategoryForm({ name: '', branch_id: '' });
+    setEditingCategory(null);
     fetchData();
   };
 
-  const handleCreateItem = async (e: React.FormEvent) => {
+  const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
-    await api.post('/menu/item', {
-        ...itemForm,
-        organization_id: user.organization_id,
-        price: parseFloat(itemForm.price),
-        branch_id: itemForm.branch_id || null
-    });
+    
+    const payload = {
+      ...itemForm,
+      organization_id: user.organization_id,
+      price: parseFloat(itemForm.price),
+      branch_id: itemForm.branch_id || null
+    };
+
+    if (editingItem) {
+      // Update existing item
+      await api.put(`/menu/item/${editingItem.id}`, payload);
+    } else {
+      // Create new item
+      await api.post('/menu/item', payload);
+    }
+    
     setIsItemModalOpen(false);
     setItemForm({ name: '', price: '', description: '', category_id: '', branch_id: '', image_url: '' });
+    setEditingItem(null);
     fetchData();
   };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (confirm('Are you sure you want to delete this category? All items in this category will also be deleted.')) {
+      await api.delete(`/menu/category/${id}`);
+      fetchData();
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (confirm('Are you sure you want to delete this item?')) {
+      await api.delete(`/menu/item/${id}`);
+      fetchData();
+    }
+  };
+
 
   const filteredItems = activeCategory === 'all' 
     ? items 
@@ -138,10 +207,10 @@ export default function Menu() {
         </div>
         
         <div className="flex gap-3">
-            <button onClick={() => setIsCategoryModalOpen(true)} disabled={!selectedBranchId && isAdmin} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={() => openCategoryModal()} disabled={!selectedBranchId && isAdmin} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <Plus weight="bold" /> Add Category
             </button>
-            <button onClick={() => setIsItemModalOpen(true)} disabled={!selectedBranchId && isAdmin} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={() => openItemModal()} disabled={!selectedBranchId && isAdmin} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <Plus weight="bold" /> Add Item
             </button>
         </div>
@@ -165,7 +234,7 @@ export default function Menu() {
                 <h2 className="text-xl font-bold text-slate-800 mb-2">No Menu Items Found</h2>
                 <p className="text-slate-500 max-w-sm mb-6">This branch has no menu items yet. You can add items manually or import from another branch.</p>
                 <div className="flex gap-3">
-                    <button onClick={() => setIsCategoryModalOpen(true)} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-50 transition-colors">
+                    <button onClick={() => openCategoryModal()} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-50 transition-colors">
                         Add Manually
                     </button>
                     <button onClick={() => setIsImportModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">
@@ -214,8 +283,8 @@ export default function Menu() {
                             <div className="flex justify-between items-center pt-3 border-t border-slate-100">
                                 <span className="text-xs font-bold text-slate-400 uppercase">{item.categories?.name}</span>
                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Pencil weight="bold" /></button>
-                                    <button className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash weight="bold" /></button>
+                                    <button onClick={() => openItemModal(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Pencil weight="bold" /></button>
+                                    <button onClick={() => handleDeleteItem(item.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash weight="bold" /></button>
                                 </div>
                             </div>
                         </div>
@@ -230,8 +299,8 @@ export default function Menu() {
       {/* Category Modal */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <form onSubmit={handleCreateCategory} className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
-                <h2 className="text-xl font-bold mb-4 text-slate-800">Add Category</h2>
+            <form onSubmit={handleSaveCategory} className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
+                <h2 className="text-xl font-bold mb-4 text-slate-800">{editingCategory ? 'Edit Category' : 'Add Category'}</h2>
                 <input className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} required />
                 
                 <label className="block text-sm font-bold text-slate-700 mb-1">Branch (Optional)</label>
@@ -253,8 +322,8 @@ export default function Menu() {
       {/* Item Modal */}
       {isItemModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <form onSubmit={handleCreateItem} className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-                <h2 className="text-xl font-bold mb-4 text-slate-800">Add Menu Item</h2>
+            <form onSubmit={handleSaveItem} className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+                <h2 className="text-xl font-bold mb-4 text-slate-800">{editingItem ? 'Edit Menu Item' : 'Add Menu Item'}</h2>
                 
                 <input className="w-full p-3 border rounded-lg mb-3 outline-none focus:border-blue-500" placeholder="Item Name" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} required />
                 
